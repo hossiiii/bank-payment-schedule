@@ -1,0 +1,44 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with theme color -->
+  <circle cx="256" cy="256" r="240" fill="#1f6feb" stroke="#f6f7fb" stroke-width="8"/>
+  
+  <!-- Bank building icon -->
+  <g transform="translate(256, 256)">
+    <!-- Main building -->
+    <rect x="-80" y="-60" width="160" height="100" fill="#ffffff" rx="8"/>
+    
+    <!-- Columns -->
+    <rect x="-60" y="-40" width="12" height="80" fill="#1f6feb"/>
+    <rect x="-20" y="-40" width="12" height="80" fill="#1f6feb"/>
+    <rect x="20" y="-40" width="12" height="80" fill="#1f6feb"/>
+    <rect x="60" y="-40" width="12" height="80" fill="#1f6feb"/>
+    
+    <!-- Roof -->
+    <polygon points="-90,-70 0,-100 90,-70" fill="#ffffff"/>
+    
+    <!-- Base -->
+    <rect x="-90" y="40" width="180" height="20" fill="#ffffff"/>
+    
+    <!-- Calendar overlay -->
+    <g transform="translate(40, -80)">
+      <rect x="0" y="0" width="40" height="32" fill="#ffffff" rx="4"/>
+      <rect x="4" y="8" width="32" height="20" fill="#f6f7fb"/>
+      <!-- Calendar grid -->
+      <g stroke="#1f6feb" stroke-width="1" fill="none">
+        <line x1="8" y1="12" x2="32" y2="12"/>
+        <line x1="8" y1="16" x2="32" y2="16"/>
+        <line x1="8" y1="20" x2="32" y2="20"/>
+        <line x1="12" y1="8" x2="12" y2="24"/>
+        <line x1="16" y1="8" x2="16" y2="24"/>
+        <line x1="20" y1="8" x2="20" y2="24"/>
+        <line x1="24" y1="8" x2="24" y2="24"/>
+        <line x1="28" y1="8" x2="28" y2="24"/>
+      </g>
+    </g>
+    
+    <!-- Yen symbol -->
+    <g transform="translate(0, 0)">
+      <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#1f6feb" text-anchor="middle">¥</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# PWA specific files
+Allow: /manifest.json
+Allow: /sw.js
+Allow: /icons/
+
+# Sitemap (when available)
+# Sitemap: https://yourdomain.com/sitemap.xml
