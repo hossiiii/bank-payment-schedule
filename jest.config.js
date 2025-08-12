@@ -19,14 +19,15 @@ const customJestConfig = {
   coverageReporters: ['text', 'lcov', 'html'],
   coverageDirectory: 'coverage',
   testTimeout: 10000,
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^dexie$': '<rootDir>/node_modules/dexie/dist/dexie.js'
   },
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(japanese-holidays-js|dexie)/)'
+    'node_modules/(?!(dexie|dexie-encrypted|typeson|typeson-registry|structuredclone-polyfill)/)'
   ],
   testEnvironmentOptions: {
     resources: 'usable'

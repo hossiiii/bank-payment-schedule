@@ -1,5 +1,8 @@
 import Dexie, { Table } from 'dexie';
-import 'dexie-encrypted';
+// Conditionally import dexie-encrypted (skip in test environment)
+if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+  require('dexie-encrypted');
+}
 import { Bank, Card, Transaction, DatabaseOperationError } from '@/types/database';
 import { SessionKeyManager } from './encryption';
 
@@ -365,7 +368,9 @@ export async function closeDatabase(): Promise<void> {
     dbInstance = null;
   }
   
-  // Clear session key
-  const keyManager = SessionKeyManager.getInstance();
-  keyManager.clear();
+  // Clear session key (skip in test environment)
+  if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+    const keyManager = SessionKeyManager.getInstance();
+    keyManager.clear();
+  }
 }

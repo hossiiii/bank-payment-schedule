@@ -11,6 +11,8 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
+    "test:unit": "jest __tests__/lib __tests__/components/ui",
+    "test:database": "jest __tests__/lib/database",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed"
