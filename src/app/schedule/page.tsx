@@ -3,8 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { BankScheduleTable, ScheduleSummary, MonthSelector } from '@/components/schedule';
 import { TopNavigation, Navigation, NavigationIcons } from '@/components/ui';
-import { useBanks, useMonthlySchedule } from '@/lib/hooks/useDatabase';
+import { TransactionDetailModal } from '@/components/schedule/TransactionDetailModal';
+import { MobileScheduleCard } from '@/components/schedule/MobileScheduleCard';
+import ScheduleFiltersComponent from '@/components/schedule/ScheduleFilters';
+import { useBanks } from '@/lib/hooks/useDatabase';
+import { useScheduleData } from '@/lib/hooks/useScheduleData';
+import { useFilteredSchedule } from '@/lib/hooks/useFilteredSchedule';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
+import { TransactionDetailModalData } from '@/types/schedule';
+import { cn } from '@/lib/utils';
 
 export default function SchedulePage() {
   // Current month state
@@ -16,13 +23,29 @@ export default function SchedulePage() {
     };
   });
 
+  // Modal state
+  const [modalData, setModalData] = useState<TransactionDetailModalData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+
   // Database hooks
   const { banks, isLoading: banksLoading, error: banksError } = useBanks();
   const { 
-    schedule, 
+    scheduleData, 
     isLoading: scheduleLoading, 
     error: scheduleError 
-  } = useMonthlySchedule(currentDate.year, currentDate.month);
+  } = useScheduleData(currentDate.year, currentDate.month);
+
+  // Filtering
+  const {
+    filteredData,
+    appliedFilters,
+    updateFilters,
+    clearFilters,
+    hasActiveFilters
+  } = useFilteredSchedule(scheduleData);
 
   // Navigation items
   const navigationItems = [
@@ -53,17 +76,39 @@ export default function SchedulePage() {
     window.history.back();
   };
 
-  // Handle transaction click (could expand to show details)
-  const handleTransactionClick = (transaction: any) => {
-    console.log('Transaction clicked:', transaction);
-    // Could implement a detail modal or navigation here
+  // Handle transaction modal
+  const handleAmountClick = (data: TransactionDetailModalData) => {
+    setModalData(data);
+    setIsModalOpen(true);
   };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setModalData(null);
+  };
+
+  // Handle responsive design
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
 
   // Loading state
   const isLoading = banksLoading || scheduleLoading;
   
   // Error state
   const error = banksError || scheduleError;
+
+  // Use filtered data or original data
+  const displayData = filteredData || scheduleData;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -131,7 +176,7 @@ export default function SchedulePage() {
                   設定画面へ
                 </button>
               </div>
-            ) : !schedule || schedule.items.length === 0 ? (
+            ) : !displayData || displayData.payments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mb-4">
                   <svg className="h-12 w-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,41 +184,71 @@ export default function SchedulePage() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  この月には引落予定がありません
+                  {hasActiveFilters ? 'フィルター条件に一致する引落予定がありません' : 'この月には引落予定がありません'}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {currentDate.year}年{currentDate.month}月の支払い予定はありません。<br />
-                  カレンダーから取引を追加してください。
+                  {hasActiveFilters ? (
+                    <>フィルター条件を変更するか、クリアしてください。</>
+                  ) : (
+                    <>
+                      {currentDate.year}年{currentDate.month}月の支払い予定はありません。<br />
+                      カレンダーから取引を追加してください。
+                    </>
+                  )}
                 </p>
                 <div className="space-x-3">
-                  <button
-                    onClick={() => window.location.href = '/'}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    カレンダーへ
-                  </button>
-                  <button
-                    onClick={() => {
-                      const today = getCurrentJapanDate();
-                      handleMonthChange(today.getFullYear(), today.getMonth() + 1);
-                    }}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    今月を表示
-                  </button>
+                  {hasActiveFilters ? (
+                    <button
+                      onClick={clearFilters}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      フィルターをクリア
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => window.location.href = '/'}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        カレンダーへ
+                      </button>
+                      <button
+                        onClick={() => {
+                          const today = getCurrentJapanDate();
+                          handleMonthChange(today.getFullYear(), today.getMonth() + 1);
+                        }}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        今月を表示
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
               <>
-                {/* Schedule summary */}
-                <ScheduleSummary schedule={schedule} />
-
-                {/* Bank schedule table */}
-                <BankScheduleTable
-                  schedule={schedule}
-                  banks={banks}
-                  onTransactionClick={handleTransactionClick}
+                {/* Schedule Filters */}
+                <ScheduleFiltersComponent
+                  filters={appliedFilters}
+                  onFiltersChange={updateFilters}
+                  availableBanks={banks}
                 />
+
+                {/* Schedule summary */}
+                <ScheduleSummary scheduleData={displayData} />
+
+                {/* Responsive schedule display */}
+                {isMobile ? (
+                  <MobileScheduleCard
+                    scheduleData={displayData}
+                    onTransactionClick={handleAmountClick}
+                  />
+                ) : (
+                  <BankScheduleTable
+                    scheduleData={displayData}
+                    onAmountClick={handleAmountClick}
+                  />
+                )}
 
                 {/* Export options */}
                 <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
@@ -184,7 +259,20 @@ export default function SchedulePage() {
                     <button
                       onClick={() => {
                         // Implement CSV export
-                        console.log('Export to CSV');
+                        const csvData = displayData.payments.flatMap(payment =>
+                          payment.transactions.map(tx => 
+                            `${payment.date},${payment.paymentName},${tx.storeName || ''},${tx.usage || ''},${tx.amount}`
+                          )
+                        ).join('\n');
+                        const csv = '引落日,引落名,店舗名,用途,金額\n' + csvData;
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        const url = URL.createObjectURL(blob);
+                        link.setAttribute('href', url);
+                        link.setAttribute('download', `引落予定表_${currentDate.year}年${currentDate.month}月.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
                       }}
                       className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
@@ -195,7 +283,6 @@ export default function SchedulePage() {
                     </button>
                     <button
                       onClick={() => {
-                        // Implement print functionality
                         window.print();
                       }}
                       className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -215,6 +302,13 @@ export default function SchedulePage() {
           </>
         )}
       </div>
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        data={modalData}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+      />
 
       {/* Bottom navigation */}
       <Navigation items={navigationItems} />
