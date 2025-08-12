@@ -4,7 +4,6 @@ import React from 'react';
 import { BankMaster, CardMaster } from '@/components/settings';
 import { TopNavigation, Navigation, NavigationIcons } from '@/components/ui';
 import { useBanks, useCards, useDatabaseStats } from '@/lib/hooks/useDatabase';
-import { formatAmount } from '@/lib/utils/validation';
 
 export default function SettingsPage() {
   // Database hooks
@@ -141,9 +140,9 @@ export default function SettingsPage() {
         <BankMaster
           banks={banks}
           isLoading={banksLoading}
-          onCreateBank={createBank}
-          onUpdateBank={updateBank}
-          onDeleteBank={deleteBank}
+          onCreateBank={async (bankData) => { await createBank(bankData); }}
+          onUpdateBank={async (id, bankData) => { await updateBank(id, bankData); }}
+          onDeleteBank={async (id) => { await deleteBank(id); }}
         />
 
         {/* Card Master */}
@@ -151,9 +150,9 @@ export default function SettingsPage() {
           cards={cards}
           banks={banks}
           isLoading={cardsLoading}
-          onCreateCard={createCard}
-          onUpdateCard={updateCard}
-          onDeleteCard={deleteCard}
+          onCreateCard={async (cardData) => { await createCard(cardData); }}
+          onUpdateCard={async (id, cardData) => { await updateCard(id, cardData); }}
+          onDeleteCard={async (id) => { await deleteCard(id); }}
         />
 
         {/* Data Management Section */}

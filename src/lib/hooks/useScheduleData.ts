@@ -201,8 +201,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
       if (!validation.isValid) {
         throw new ScheduleProcessingError(
           `Invalid schedule data: ${validation.errors.join(', ')}`,
-          'CALCULATION_ERROR',
-          { validationErrors: validation.errors }
+          'CALCULATION_ERROR'
         );
       }
 
@@ -218,7 +217,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
       throw new ScheduleProcessingError(
         `Failed to calculate schedule for ${year}年${month}月: ${error instanceof Error ? error.message : 'Unknown error'}`,
         'CALCULATION_ERROR',
-        { originalError: error, year, month }
+        { originalError: error instanceof Error ? error : new Error(String(error)) }
       );
     }
   }, [year, month, transactions, banks, cards]);
@@ -339,13 +338,13 @@ export function useMultiMonthScheduleData(
     try {
       // This is a simplified implementation - in a real app you might want to batch these
       for (let i = 0; i < monthCount; i++) {
-        const date = new Date(startYear, startMonth - 1 + i, 1);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
+        // const date = new Date(startYear, startMonth - 1 + i, 1);
+        // const year = date.getFullYear();
+        // const month = date.getMonth() + 1;
         
         // Note: This would need to be implemented properly with actual data fetching
         // For now, it's a placeholder that shows the pattern
-        const key = `${year}-${month}`;
+        // const key = `${year}-${month}`;
         // const data = await fetchScheduleForMonth(year, month);
         // newData.set(key, data);
       }

@@ -22,21 +22,17 @@ export {
 } from './MonthSelector';
 
 export { 
-  PaymentRow,
-  type PaymentRowProps
+  PaymentRow
 } from './PaymentRow';
 
 export { 
-  TransactionDetailModal,
-  type TransactionDetailModalProps
+  TransactionDetailModal
 } from './TransactionDetailModal';
 
 export { 
-  default as ScheduleFiltersComponent,
-  type ScheduleFiltersProps
+  default as ScheduleFiltersComponent
 } from './ScheduleFilters';
 
 export { 
-  MobileScheduleCard,
-  type MobileScheduleCardProps
+  MobileScheduleCard
 } from './MobileScheduleCard';

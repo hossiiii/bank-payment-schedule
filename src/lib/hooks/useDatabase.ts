@@ -132,8 +132,9 @@ export function useBanks() {
       // Optimistic update
       const optimisticBank: Bank = {
         id: `temp-${Date.now()}`,
-        ...bankData,
-        createdAt: Date.now()
+        name: bankData.name,
+        createdAt: Date.now(),
+        ...(bankData.memo && { memo: bankData.memo })
       };
       
       setState(prev => ({
@@ -170,15 +171,20 @@ export function useBanks() {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      // Store original for rollback
-      const originalBanks = state.data;
-      
       // Optimistic update
       setState(prev => ({
         ...prev,
-        data: prev.data.map(bank => 
-          bank.id === id ? { ...bank, ...updates } : bank
-        )
+        data: prev.data.map(bank => {
+          if (bank.id === id) {
+            return {
+              id: bank.id,
+              name: updates.name ?? bank.name,
+              createdAt: bank.createdAt,
+              ...(updates.memo !== undefined ? { memo: updates.memo } : bank.memo !== undefined ? { memo: bank.memo } : {})
+            };
+          }
+          return bank;
+        })
       }));
       
       const updatedBank = await bankOperations.update(id, updates);
@@ -196,10 +202,9 @@ export function useBanks() {
       
       return updatedBank;
     } catch (error) {
-      // Rollback
+      // Rollback - reload data
       setState(prev => ({
         ...prev,
-        data: originalBanks,
         error: error instanceof Error ? error : new Error('Failed to update bank')
       }));
       throw error;
@@ -209,9 +214,6 @@ export function useBanks() {
   const deleteBank = useCallback(async (id: string): Promise<void> => {
     try {
       setState(prev => ({ ...prev, error: null }));
-      
-      // Store original for rollback
-      const originalBanks = state.data;
       
       // Optimistic update
       setState(prev => ({
@@ -224,10 +226,9 @@ export function useBanks() {
       // Invalidate cache
       dbCache.invalidate('banks');
     } catch (error) {
-      // Rollback
+      // Rollback - just set error
       setState(prev => ({
         ...prev,
-        data: originalBanks,
         error: error instanceof Error ? error : new Error('Failed to delete bank')
       }));
       throw error;
@@ -311,8 +312,14 @@ export function useCards(bankId?: string) {
       
       const optimisticCard: Card = {
         id: `temp-${Date.now()}`,
-        ...cardData,
-        createdAt: Date.now()
+        name: cardData.name,
+        bankId: cardData.bankId,
+        closingDay: cardData.closingDay,
+        paymentDay: cardData.paymentDay,
+        paymentMonthShift: cardData.paymentMonthShift,
+        adjustWeekend: cardData.adjustWeekend,
+        createdAt: Date.now(),
+        ...(cardData.memo && { memo: cardData.memo })
       };
       
       setState(prev => ({
@@ -346,13 +353,24 @@ export function useCards(bankId?: string) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalCards = state.data;
-      
       setState(prev => ({
         ...prev,
-        data: prev.data.map(card => 
-          card.id === id ? { ...card, ...updates } : card
-        )
+        data: prev.data.map(card => {
+          if (card.id === id) {
+            return {
+              id: card.id,
+              name: updates.name ?? card.name,
+              bankId: updates.bankId ?? card.bankId,
+              closingDay: updates.closingDay ?? card.closingDay,
+              paymentDay: updates.paymentDay ?? card.paymentDay,
+              paymentMonthShift: updates.paymentMonthShift ?? card.paymentMonthShift,
+              adjustWeekend: updates.adjustWeekend ?? card.adjustWeekend,
+              createdAt: card.createdAt,
+              ...(updates.memo !== undefined ? { memo: updates.memo } : card.memo !== undefined ? { memo: card.memo } : {})
+            };
+          }
+          return card;
+        })
       }));
       
       const updatedCard = await cardOperations.update(id, updates);
@@ -370,7 +388,6 @@ export function useCards(bankId?: string) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalCards,
         error: error instanceof Error ? error : new Error('Failed to update card')
       }));
       throw error;
@@ -380,8 +397,6 @@ export function useCards(bankId?: string) {
   const deleteCard = useCallback(async (id: string): Promise<void> => {
     try {
       setState(prev => ({ ...prev, error: null }));
-      
-      const originalCards = state.data;
       
       setState(prev => ({
         ...prev,
@@ -394,7 +409,6 @@ export function useCards(bankId?: string) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalCards,
         error: error instanceof Error ? error : new Error('Failed to delete card')
       }));
       throw error;
@@ -476,9 +490,17 @@ export function useTransactions(filters?: TransactionFilters) {
       
       const optimisticTransaction: Transaction = {
         id: `temp-${Date.now()}`,
-        ...transactionData,
-        scheduledPayDate: Date.now(), // Temporary value, will be replaced with calculated value
-        createdAt: Date.now()
+        date: transactionData.date,
+        amount: transactionData.amount,
+        paymentType: transactionData.paymentType,
+        scheduledPayDate: transactionData.scheduledPayDate ?? Date.now(),
+        createdAt: Date.now(),
+        ...(transactionData.storeName && { storeName: transactionData.storeName }),
+        ...(transactionData.usage && { usage: transactionData.usage }),
+        ...(transactionData.cardId && { cardId: transactionData.cardId }),
+        ...(transactionData.bankId && { bankId: transactionData.bankId }),
+        ...(transactionData.isScheduleEditable && { isScheduleEditable: transactionData.isScheduleEditable }),
+        ...(transactionData.memo && { memo: transactionData.memo })
       };
       
       setState(prev => ({
@@ -513,13 +535,28 @@ export function useTransactions(filters?: TransactionFilters) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalTransactions = state.data;
       
       setState(prev => ({
         ...prev,
-        data: prev.data.map(transaction => 
-          transaction.id === id ? { ...transaction, ...updates } : transaction
-        )
+        data: prev.data.map(transaction => {
+          if (transaction.id === id) {
+            return {
+              id: transaction.id,
+              date: updates.date ?? transaction.date,
+              amount: updates.amount ?? transaction.amount,
+              paymentType: updates.paymentType ?? transaction.paymentType,
+              scheduledPayDate: updates.scheduledPayDate ?? transaction.scheduledPayDate,
+              createdAt: transaction.createdAt,
+              ...(updates.storeName !== undefined ? { storeName: updates.storeName } : transaction.storeName !== undefined ? { storeName: transaction.storeName } : {}),
+              ...(updates.usage !== undefined ? { usage: updates.usage } : transaction.usage !== undefined ? { usage: transaction.usage } : {}),
+              ...(updates.cardId !== undefined ? { cardId: updates.cardId } : transaction.cardId !== undefined ? { cardId: transaction.cardId } : {}),
+              ...(updates.bankId !== undefined ? { bankId: updates.bankId } : transaction.bankId !== undefined ? { bankId: transaction.bankId } : {}),
+              ...(updates.isScheduleEditable !== undefined ? { isScheduleEditable: updates.isScheduleEditable } : transaction.isScheduleEditable !== undefined ? { isScheduleEditable: transaction.isScheduleEditable } : {}),
+              ...(updates.memo !== undefined ? { memo: updates.memo } : transaction.memo !== undefined ? { memo: transaction.memo } : {})
+            };
+          }
+          return transaction;
+        })
       }));
       
       const updatedTransaction = await transactionOperations.update(id, updates);
@@ -538,7 +575,6 @@ export function useTransactions(filters?: TransactionFilters) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalTransactions,
         error: error instanceof Error ? error : new Error('Failed to update transaction')
       }));
       throw error;
@@ -549,7 +585,6 @@ export function useTransactions(filters?: TransactionFilters) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalTransactions = state.data;
       
       setState(prev => ({
         ...prev,
@@ -563,7 +598,6 @@ export function useTransactions(filters?: TransactionFilters) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalTransactions,
         error: error instanceof Error ? error : new Error('Failed to delete transaction')
       }));
       throw error;

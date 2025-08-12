@@ -1,4 +1,4 @@
-import { Transaction } from './database';
+import { Transaction, Bank, Card } from './database';
 
 // New data structure for cross-table view (日付×銀行マトリックス)
 export interface PaymentScheduleView {
@@ -31,7 +31,7 @@ export interface BankPayment {
 // Filtering interfaces
 export interface ScheduleFilters {
   dateRange?: { start: Date; end: Date };
-  amountRange?: { min: number; max: number };
+  amountRange?: { min?: number; max?: number };
   searchText?: string;              // 店舗名/用途検索
   bankIds?: string[];               // 銀行絞り込み
   paymentTypes?: ('card' | 'bank')[]; // 支払い方法絞り込み
@@ -57,11 +57,6 @@ export interface TransactionDetail {
 }
 
 // Bank information for column generation
-export interface Bank {
-  id: string;
-  name: string;
-}
-
 // Hook return types
 export interface UseScheduleDataResult {
   scheduleData: PaymentScheduleView | null;
@@ -132,25 +127,33 @@ export interface ScheduleCalculationParams {
   month: number;
 }
 
-export interface Card {
-  id: string;
-  name: string;
-  bankId: string;
-  closingDay: string;
-  paymentDay: string;
-  paymentMonthShift: number;
-  adjustWeekend: boolean;
+// Error types specific to schedule processing
+export interface ScheduleProcessingErrorDetails {
+  transactionId?: string;
+  cardId?: string;
+  bankId?: string;
+  originalError?: Error;
 }
 
-// Error types specific to schedule processing
-export interface ScheduleProcessingError extends Error {
-  code: 'INVALID_DATE' | 'MISSING_CARD' | 'MISSING_BANK' | 'CALCULATION_ERROR';
-  details?: {
-    transactionId?: string;
-    cardId?: string;
-    bankId?: string;
-    originalError?: Error;
-  };
+export type ScheduleErrorCode = 'INVALID_DATE' | 'MISSING_CARD' | 'MISSING_BANK' | 'CALCULATION_ERROR';
+
+export class ScheduleProcessingError extends Error {
+  public readonly code: ScheduleErrorCode;
+  public readonly details?: ScheduleProcessingErrorDetails;
+
+  constructor(message: string, code: ScheduleErrorCode, details?: ScheduleProcessingErrorDetails) {
+    super(message);
+    this.name = 'ScheduleProcessingError';
+    this.code = code;
+    if (details !== undefined) {
+      this.details = details;
+    }
+    
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ScheduleProcessingError);
+    }
+  }
 }
 
 // Sort options for the table

@@ -67,7 +67,7 @@ export function BankMaster({
     // Validate bank name
     const nameValidation = validateBankName(formData.name);
     if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.errors[0];
+      newErrors.name = nameValidation.errors[0] ?? 'Invalid bank name';
     }
 
     // Check for duplicate bank name (when creating or editing)
@@ -82,7 +82,7 @@ export function BankMaster({
     // Validate memo
     const memoValidation = validateMemo(formData.memo);
     if (!memoValidation.isValid) {
-      newErrors.memo = memoValidation.errors[0];
+      newErrors.memo = memoValidation.errors[0] ?? 'Invalid memo';
     }
 
     setErrors(newErrors);
@@ -303,7 +303,7 @@ export function BankMaster({
               value={formData.name}
               onChange={handleInputChange('name')}
               disabled={isFormDisabled}
-              error={errors.name}
+              {...(errors.name && { error: errors.name })}
               placeholder="みずほ銀行"
               helperText="正確な銀行名を入力してください"
               fullWidth
@@ -376,7 +376,7 @@ export function BankMaster({
               value={formData.name}
               onChange={handleInputChange('name')}
               disabled={isFormDisabled}
-              error={errors.name}
+              {...(errors.name && { error: errors.name })}
               placeholder="みずほ銀行"
               helperText="正確な銀行名を入力してください"
               fullWidth

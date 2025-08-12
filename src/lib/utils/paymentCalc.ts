@@ -262,7 +262,7 @@ export function getTodayTransactionPaymentDate(card: Card): PaymentCalculationRe
  */
 export function recalculatePaymentDates(
   transactions: { id: string; date: number }[],
-  oldCard: Card,
+  _oldCard: Card,
   newCard: Card
 ): Map<string, Date> {
   const updates = new Map<string, Date>();
@@ -301,7 +301,9 @@ export function analyzePaymentTiming(card: Card): {
   
   const results = calculateMultiplePaymentDates(card, testDates);
   const delays = results.map(result => {
-    const txDate = testDates[results.indexOf(result)];
+    const index = results.indexOf(result);
+    const txDate = testDates[index];
+    if (!txDate) return 0; // Fallback for undefined
     const payDate = result.scheduledPayDate;
     const diffTime = payDate.getTime() - txDate.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
