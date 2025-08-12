@@ -6,14 +6,13 @@ import {
   Card,
   GroupedTransaction,
   ScheduleCalculationParams,
-  ScheduleProcessingError
+  ScheduleError
 } from '@/types/schedule';
-import { Transaction, MonthlySchedule, ScheduleItem } from '@/types/database';
+import { Transaction, ScheduleItem } from '@/types/database';
 import { 
   formatDateISO, 
   getWeekdayNameJP, 
-  createJapanDate, 
-  formatJapaneseDate 
+  createJapanDate
 } from './dateUtils';
 import { calculateCardPaymentDate, calculateBankPaymentDate } from './paymentCalc';
 
@@ -58,7 +57,7 @@ export function transformToPaymentScheduleView(
       uniqueBanks
     };
   } catch (error) {
-    throw new ScheduleProcessingError(
+    throw new ScheduleError(
       `Failed to transform schedule data for ${year}年${month}月`,
       'CALCULATION_ERROR',
       { originalError: error, year, month }
@@ -263,7 +262,7 @@ export function recalculateScheduledPaymentDate(
   if (transaction.paymentType === 'card' && transaction.cardId) {
     const card = cards.find(c => c.id === transaction.cardId);
     if (!card) {
-      throw new ScheduleProcessingError(
+      throw new ScheduleError(
         `Card not found for transaction ${transaction.id}`,
         'MISSING_CARD',
         { transactionId: transaction.id, cardId: transaction.cardId }
@@ -421,14 +420,14 @@ function getBankIdFromName(bankName: string, banks: Bank[]): string | undefined 
 }
 
 /**
- * Creates ScheduleProcessingError with proper typing
+ * Creates ScheduleError with proper typing
  */
 export function createScheduleError(
   message: string,
-  code: ScheduleProcessingError['code'],
-  details?: ScheduleProcessingError['details']
-): ScheduleProcessingError {
-  const error = new Error(message) as ScheduleProcessingError;
+  code: ScheduleError['code'],
+  details?: ScheduleError['details']
+): ScheduleError {
+  const error = new Error(message) as ScheduleError;
   error.code = code;
   error.details = details;
   return error;

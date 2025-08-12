@@ -132,7 +132,8 @@ export function useBanks() {
       // Optimistic update
       const optimisticBank: Bank = {
         id: `temp-${Date.now()}`,
-        ...bankData,
+        name: bankData.name,
+        memo: bankData.memo || '',
         createdAt: Date.now()
       };
       
@@ -170,14 +171,15 @@ export function useBanks() {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      // Store original for rollback
-      const originalBanks = state.data;
-      
       // Optimistic update
       setState(prev => ({
         ...prev,
         data: prev.data.map(bank => 
-          bank.id === id ? { ...bank, ...updates } : bank
+          bank.id === id ? { 
+            ...bank, 
+            name: updates.name ?? bank.name,
+            memo: updates.memo ?? bank.memo ?? ''
+          } : bank
         )
       }));
       
@@ -196,10 +198,10 @@ export function useBanks() {
       
       return updatedBank;
     } catch (error) {
-      // Rollback
+      // Refresh data from the database
+      fetchBanks();
       setState(prev => ({
         ...prev,
-        data: originalBanks,
         error: error instanceof Error ? error : new Error('Failed to update bank')
       }));
       throw error;
@@ -209,9 +211,6 @@ export function useBanks() {
   const deleteBank = useCallback(async (id: string): Promise<void> => {
     try {
       setState(prev => ({ ...prev, error: null }));
-      
-      // Store original for rollback
-      const originalBanks = state.data;
       
       // Optimistic update
       setState(prev => ({
@@ -224,10 +223,10 @@ export function useBanks() {
       // Invalidate cache
       dbCache.invalidate('banks');
     } catch (error) {
-      // Rollback
+      // Refresh data from the database
+      fetchBanks();
       setState(prev => ({
         ...prev,
-        data: originalBanks,
         error: error instanceof Error ? error : new Error('Failed to delete bank')
       }));
       throw error;
@@ -311,7 +310,13 @@ export function useCards(bankId?: string) {
       
       const optimisticCard: Card = {
         id: `temp-${Date.now()}`,
-        ...cardData,
+        name: cardData.name,
+        bankId: cardData.bankId,
+        closingDay: cardData.closingDay,
+        paymentDay: cardData.paymentDay,
+        paymentMonthShift: cardData.paymentMonthShift,
+        adjustWeekend: cardData.adjustWeekend,
+        ...(cardData.memo && { memo: cardData.memo }),
         createdAt: Date.now()
       };
       
@@ -346,15 +351,6 @@ export function useCards(bankId?: string) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalCards = state.data;
-      
-      setState(prev => ({
-        ...prev,
-        data: prev.data.map(card => 
-          card.id === id ? { ...card, ...updates } : card
-        )
-      }));
-      
       const updatedCard = await cardOperations.update(id, updates);
       
       setState(prev => ({
@@ -370,7 +366,6 @@ export function useCards(bankId?: string) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalCards,
         error: error instanceof Error ? error : new Error('Failed to update card')
       }));
       throw error;
@@ -381,20 +376,17 @@ export function useCards(bankId?: string) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalCards = state.data;
+      await cardOperations.delete(id);
       
       setState(prev => ({
         ...prev,
         data: prev.data.filter(card => card.id !== id)
       }));
       
-      await cardOperations.delete(id);
-      
       dbCache.invalidate('cards');
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalCards,
         error: error instanceof Error ? error : new Error('Failed to delete card')
       }));
       throw error;
@@ -476,8 +468,16 @@ export function useTransactions(filters?: TransactionFilters) {
       
       const optimisticTransaction: Transaction = {
         id: `temp-${Date.now()}`,
-        ...transactionData,
-        scheduledPayDate: Date.now(), // Temporary value, will be replaced with calculated value
+        date: transactionData.date,
+        amount: transactionData.amount,
+        paymentType: transactionData.paymentType,
+        ...(transactionData.storeName && { storeName: transactionData.storeName }),
+        ...(transactionData.usage && { usage: transactionData.usage }),
+        ...(transactionData.cardId && { cardId: transactionData.cardId }),
+        ...(transactionData.bankId && { bankId: transactionData.bankId }),
+        ...(transactionData.memo && { memo: transactionData.memo }),
+        ...(transactionData.isScheduleEditable !== undefined && { isScheduleEditable: transactionData.isScheduleEditable }),
+        scheduledPayDate: transactionData.scheduledPayDate || Date.now(),
         createdAt: Date.now()
       };
       
@@ -513,15 +513,6 @@ export function useTransactions(filters?: TransactionFilters) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalTransactions = state.data;
-      
-      setState(prev => ({
-        ...prev,
-        data: prev.data.map(transaction => 
-          transaction.id === id ? { ...transaction, ...updates } : transaction
-        )
-      }));
-      
       const updatedTransaction = await transactionOperations.update(id, updates);
       
       setState(prev => ({
@@ -538,7 +529,6 @@ export function useTransactions(filters?: TransactionFilters) {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalTransactions,
         error: error instanceof Error ? error : new Error('Failed to update transaction')
       }));
       throw error;
@@ -549,21 +539,18 @@ export function useTransactions(filters?: TransactionFilters) {
     try {
       setState(prev => ({ ...prev, error: null }));
       
-      const originalTransactions = state.data;
+      await transactionOperations.delete(id);
       
       setState(prev => ({
         ...prev,
         data: prev.data.filter(transaction => transaction.id !== id)
       }));
       
-      await transactionOperations.delete(id);
-      
       dbCache.invalidate('transactions');
       dbCache.invalidate('schedule');
     } catch (error) {
       setState(prev => ({
         ...prev,
-        data: originalTransactions,
         error: error instanceof Error ? error : new Error('Failed to delete transaction')
       }));
       throw error;

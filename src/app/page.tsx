@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CalendarView, MonthNavigation, TransactionModal } from '@/components/calendar';
 import { Navigation, NavigationIcons } from '@/components/ui';
 import { useBanks, useCards, useTransactions, useMonthlySchedule } from '@/lib/hooks/useDatabase';
@@ -33,8 +33,10 @@ export default function CalendarPage() {
     updateTransaction,
     deleteTransaction
   } = useTransactions({
-    year: currentDate.year,
-    month: currentDate.month
+    dateRange: {
+      start: new Date(currentDate.year, currentDate.month - 1, 1).getTime(),
+      end: new Date(currentDate.year, currentDate.month, 0).getTime()
+    }
   });
   const { 
     schedule, 
@@ -203,7 +205,7 @@ export default function CalendarPage() {
                 year={currentDate.year}
                 month={currentDate.month}
                 transactions={transactions}
-                schedule={schedule || undefined}
+                {...(schedule && { schedule })}
                 onDateClick={handleDateClick}
                 onTransactionClick={handleTransactionClick}
               />
@@ -218,9 +220,9 @@ export default function CalendarPage() {
           isOpen={isModalOpen}
           onClose={handleModalClose}
           onSave={handleTransactionSave}
-          onDelete={selectedTransaction ? handleTransactionDelete : undefined}
+          {...(selectedTransaction && { onDelete: handleTransactionDelete })}
           selectedDate={selectedDate}
-          transaction={selectedTransaction || undefined}
+          {...(selectedTransaction && { transaction: selectedTransaction })}
           banks={banks}
           cards={cards}
           isLoading={isLoading}

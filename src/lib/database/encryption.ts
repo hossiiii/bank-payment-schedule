@@ -55,7 +55,7 @@ export async function deriveKeyFromPassword(
     const key = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: actualSalt,
+        salt: actualSalt as BufferSource,
         iterations: PBKDF2_ITERATIONS,
         hash: 'SHA-256'
       },
@@ -93,7 +93,7 @@ export async function encryptData(
     const encryptedBuffer = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: actualIV,
+        iv: actualIV as BufferSource,
         tagLength: TAG_LENGTH * 8 // Convert to bits
       },
       encryptionKey,
@@ -165,7 +165,7 @@ export async function decryptWithPassword<T = unknown>(
   password: string
 ): Promise<T> {
   const salt = base64ToArrayBuffer(encryptedData.salt);
-  const { key } = await deriveKeyFromPassword(password, salt);
+  const { key } = await deriveKeyFromPassword(password, new Uint8Array(salt));
   
   return await decryptData<T>(encryptedData, key);
 }
@@ -192,7 +192,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const uint8Array = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
   let binary = '';
   for (let i = 0; i < uint8Array.length; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
+    binary += String.fromCharCode(uint8Array[i]!);
   }
   return btoa(binary);
 }

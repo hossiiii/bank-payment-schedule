@@ -11,7 +11,6 @@ import { useScheduleData } from '@/lib/hooks/useScheduleData';
 import { useFilteredSchedule } from '@/lib/hooks/useFilteredSchedule';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
 import { TransactionDetailModalData } from '@/types/schedule';
-import { cn } from '@/lib/utils';
 
 export default function SchedulePage() {
   // Current month state

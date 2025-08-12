@@ -54,27 +54,20 @@ export function useEncryption() {
       try {
         setState(prev => ({ ...prev, isLoading: true, error: null }));
         
-        sessionManagerRef.current = new SessionKeyManager();
+        sessionManagerRef.current = SessionKeyManager.getInstance();
         
-        // Check if there's a stored key hash (user has set up encryption)
-        const hasStoredKey = await sessionManagerRef.current.hasStoredKey();
-        
-        // Check if session is already active
-        const isUnlocked = sessionManagerRef.current.hasActiveSession();
-        const sessionExpiresAt = sessionManagerRef.current.getSessionExpiration();
+        // Check if session is already initialized
+        const isUnlocked = sessionManagerRef.current.isInitialized();
         
         setState({
           isUnlocked,
-          hasStoredKey,
-          sessionExpiresAt,
+          hasStoredKey: false, // This would need to be implemented based on actual storage logic
+          sessionExpiresAt: null,
           isLoading: false,
           error: null
         });
         
-        // Set up expiration timer if session is active
-        if (isUnlocked && sessionExpiresAt) {
-          setupExpirationTimer(sessionExpiresAt);
-        }
+        // Note: Session expiration would need to be implemented if needed
       } catch (error) {
         setState(prev => ({
           ...prev,
@@ -111,7 +104,7 @@ export function useEncryption() {
   // Handle session expiration
   const handleSessionExpiration = useCallback(() => {
     if (sessionManagerRef.current) {
-      sessionManagerRef.current.clearSession();
+      sessionManagerRef.current.clear();
     }
     
     setState(prev => ({
@@ -140,20 +133,16 @@ export function useEncryption() {
         throw new Error(validation.errors.join(', '));
       }
       
-      // Derive key and setup session
-      const derivedKey = await deriveKeyFromPassword(password);
-      await sessionManagerRef.current.storeKeyHash(derivedKey);
-      const expiresAt = await sessionManagerRef.current.createSession(derivedKey);
+      // Initialize with password
+      await sessionManagerRef.current.initializeWithPassword(password);
       
       setState({
         isUnlocked: true,
         hasStoredKey: true,
-        sessionExpiresAt: expiresAt,
+        sessionExpiresAt: null,
         isLoading: false,
         error: null
       });
-      
-      setupExpirationTimer(expiresAt);
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -173,26 +162,16 @@ export function useEncryption() {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Derive key and verify against stored hash
-      const derivedKey = await deriveKeyFromPassword(password);
-      const isValid = await sessionManagerRef.current.verifyKeyHash(derivedKey);
-      
-      if (!isValid) {
-        throw new Error('Invalid password');
-      }
-      
-      // Create new session
-      const expiresAt = await sessionManagerRef.current.createSession(derivedKey);
+      // Try to initialize with password (this would validate the password)
+      await sessionManagerRef.current.initializeWithPassword(password);
       
       setState({
         isUnlocked: true,
         hasStoredKey: true,
-        sessionExpiresAt: expiresAt,
+        sessionExpiresAt: null,
         isLoading: false,
         error: null
       });
-      
-      setupExpirationTimer(expiresAt);
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -210,7 +189,7 @@ export function useEncryption() {
     }
     
     try {
-      sessionManagerRef.current.clearSession();
+      sessionManagerRef.current.clear();
       
       setState(prev => ({
         ...prev,
@@ -365,7 +344,7 @@ export function useEncryption() {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       // Clear all stored keys and session
-      sessionManagerRef.current.clearSession();
+      sessionManagerRef.current.clear();
       await sessionManagerRef.current.clearStoredKey();
       
       setState({

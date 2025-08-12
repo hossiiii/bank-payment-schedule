@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ScheduleFilters, ScheduleFiltersProps, Bank } from '@/types/schedule';
+import { ScheduleFilters, ScheduleFiltersProps } from '@/types/schedule';
 import { Input } from '@/components/ui/Input';
 import { formatDateISO } from '@/lib/utils/dateUtils';
 
@@ -55,22 +55,28 @@ export function ScheduleFiltersComponent({
       const newFilters = { ...localFilters };
       if (field === 'min' && newFilters.amountRange) {
         if (newFilters.amountRange.max === undefined) {
-          delete newFilters.amountRange;
+          const { amountRange, ...rest } = newFilters;
+          applyFilters(rest);
+          return;
         } else {
-          delete newFilters.amountRange.min;
+          const { min, ...rangeRest } = newFilters.amountRange;
+          newFilters.amountRange = rangeRest as { min: number; max: number; };
         }
       } else if (field === 'max' && newFilters.amountRange) {
         if (newFilters.amountRange.min === undefined) {
-          delete newFilters.amountRange;
+          const { amountRange, ...rest } = newFilters;
+          applyFilters(rest);
+          return;
         } else {
-          delete newFilters.amountRange.max;
+          const { max, ...rangeRest } = newFilters.amountRange;
+          newFilters.amountRange = rangeRest as { min: number; max: number; };
         }
       }
       applyFilters(newFilters);
       return;
     }
 
-    const newRange = localFilters.amountRange || {};
+    const newRange = localFilters.amountRange || {} as { min?: number; max?: number; };
     
     if (field === 'min') {
       newRange.min = numValue;
@@ -78,10 +84,16 @@ export function ScheduleFiltersComponent({
       newRange.max = numValue;
     }
 
-    applyFilters({
-      ...localFilters,
-      amountRange: newRange
-    });
+    // Only include amountRange if both min and max are defined
+    if (newRange.min !== undefined && newRange.max !== undefined) {
+      applyFilters({
+        ...localFilters,
+        amountRange: { min: newRange.min, max: newRange.max }
+      });
+    } else {
+      const { amountRange, ...filtersWithoutRange } = localFilters;
+      applyFilters(filtersWithoutRange);
+    }
   };
 
   // Handle search text change

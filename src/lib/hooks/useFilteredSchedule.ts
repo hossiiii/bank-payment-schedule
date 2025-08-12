@@ -5,8 +5,7 @@ import {
   PaymentScheduleView,
   ScheduleFilters,
   UseFilteredScheduleResult,
-  PaymentSummary,
-  TransactionDetail
+  PaymentSummary
 } from '@/types/schedule';
 
 /**

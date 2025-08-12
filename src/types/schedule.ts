@@ -153,6 +153,23 @@ export interface ScheduleProcessingError extends Error {
   };
 }
 
+// Error class for runtime usage
+export class ScheduleError extends Error implements ScheduleProcessingError {
+  public code: ScheduleProcessingError['code'];
+  public details?: ScheduleProcessingError['details'];
+
+  constructor(
+    message: string,
+    code: ScheduleProcessingError['code'],
+    details?: ScheduleProcessingError['details']
+  ) {
+    super(message);
+    this.name = 'ScheduleProcessingError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
 // Sort options for the table
 export type SortField = 'date' | 'paymentName' | 'totalAmount';
 export type SortOrder = 'asc' | 'desc';

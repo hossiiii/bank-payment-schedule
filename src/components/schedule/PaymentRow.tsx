@@ -3,8 +3,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
-  PaymentSummary, 
-  Bank, 
   TransactionDetailModalData, 
   PaymentRowProps 
 } from '@/types/schedule';
@@ -42,11 +40,11 @@ export function PaymentRow({
         .map(tx => ({
           id: tx.id,
           date: new Date(tx.date).toLocaleDateString('ja-JP'),
-          storeName: tx.storeName,
-          usage: tx.usage,
+          storeName: tx.storeName || '',
+          usage: tx.usage || '',
           amount: tx.amount,
           paymentType: tx.paymentType,
-          cardName: tx.paymentType === 'card' ? payment.paymentName : undefined
+          cardName: tx.paymentType === 'card' ? (payment.paymentName || '') : ''
         })),
       totalAmount: bankPayment.amount
     };
@@ -63,11 +61,11 @@ export function PaymentRow({
       transactions: payment.transactions.map(tx => ({
         id: tx.id,
         date: new Date(tx.date).toLocaleDateString('ja-JP'),
-        storeName: tx.storeName,
-        usage: tx.usage,
+        storeName: tx.storeName || '',
+        usage: tx.usage || '',
         amount: tx.amount,
         paymentType: tx.paymentType,
-        cardName: tx.paymentType === 'card' ? payment.paymentName : undefined
+        cardName: tx.paymentType === 'card' ? (payment.paymentName || '') : ''
       })),
       totalAmount: payment.totalAmount
     };

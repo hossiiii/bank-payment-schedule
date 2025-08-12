@@ -96,7 +96,7 @@ export function CardMaster({
     // Validate card name
     const nameValidation = validateCardName(formData.name);
     if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.errors[0];
+      newErrors.name = nameValidation.errors[0] || 'Invalid card name';
     }
 
     // Check for duplicate card name within the same bank
@@ -117,20 +117,20 @@ export function CardMaster({
     // Validate closing day
     const closingDayValidation = validateDayOfMonth(formData.closingDay, '締切日');
     if (!closingDayValidation.isValid) {
-      newErrors.closingDay = closingDayValidation.errors[0];
+      newErrors.closingDay = closingDayValidation.errors[0] || 'Invalid closing day';
     }
 
     // Validate payment day
     const paymentDayValidation = validateDayOfMonth(formData.paymentDay, '支払日');
     if (!paymentDayValidation.isValid) {
-      newErrors.paymentDay = paymentDayValidation.errors[0];
+      newErrors.paymentDay = paymentDayValidation.errors[0] || 'Invalid payment day';
     }
 
     // Validate payment schedule logic
     if (formData.closingDay && formData.paymentDay) {
       const scheduleValidation = validatePaymentSchedule(formData.closingDay, formData.paymentDay);
       if (!scheduleValidation.isValid) {
-        newErrors.paymentDay = scheduleValidation.errors[0];
+        newErrors.paymentDay = scheduleValidation.errors[0] || 'Invalid payment schedule';
       }
     }
 
@@ -142,7 +142,7 @@ export function CardMaster({
     // Validate memo
     const memoValidation = validateMemo(formData.memo);
     if (!memoValidation.isValid) {
-      newErrors.memo = memoValidation.errors[0];
+      newErrors.memo = memoValidation.errors[0] || 'Invalid memo';
     }
 
     setErrors(newErrors);
@@ -471,7 +471,7 @@ export function CardMaster({
                 value={formData.name}
                 onChange={handleInputChange('name')}
                 disabled={isFormDisabled}
-                error={errors.name}
+                {...(errors.name && { error: errors.name })}
                 placeholder="楽天カード"
                 helperText="カードの名前を入力してください"
                 fullWidth
@@ -510,7 +510,7 @@ export function CardMaster({
                   value={formData.closingDay}
                   onChange={handleInputChange('closingDay')}
                   disabled={isFormDisabled}
-                  error={errors.closingDay}
+                  {...(errors.closingDay && { error: errors.closingDay })}
                   placeholder="15 または 月末"
                   helperText="1-31の数字か「月末」"
                 />
@@ -521,7 +521,7 @@ export function CardMaster({
                   value={formData.paymentDay}
                   onChange={handleInputChange('paymentDay')}
                   disabled={isFormDisabled}
-                  error={errors.paymentDay}
+                  {...(errors.paymentDay && { error: errors.paymentDay })}
                   placeholder="27 または 月末"
                   helperText="1-31の数字か「月末」"
                 />

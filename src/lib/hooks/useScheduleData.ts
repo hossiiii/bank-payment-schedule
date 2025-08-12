@@ -5,7 +5,7 @@ import {
   PaymentScheduleView,
   UseScheduleDataResult,
   ScheduleCalculationParams,
-  ScheduleProcessingError
+  ScheduleError
 } from '@/types/schedule';
 import { Transaction, Card, DatabaseOperationError } from '@/types/database';
 import { transformToPaymentScheduleView, validatePaymentScheduleView } from '@/lib/utils/scheduleUtils';
@@ -166,7 +166,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
 
       // Validate inputs
       if (!banks.length) {
-        throw new ScheduleProcessingError(
+        throw new ScheduleError(
           'No banks configured. Please add banks in settings.',
           'MISSING_BANK'
         );
@@ -199,7 +199,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
       // Validate the result
       const validation = validatePaymentScheduleView(scheduleData);
       if (!validation.isValid) {
-        throw new ScheduleProcessingError(
+        throw new ScheduleError(
           `Invalid schedule data: ${validation.errors.join(', ')}`,
           'CALCULATION_ERROR',
           { validationErrors: validation.errors }
@@ -211,11 +211,11 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
 
       return scheduleData;
     } catch (error) {
-      if (error instanceof ScheduleProcessingError) {
+      if (error instanceof ScheduleError) {
         throw error;
       }
       
-      throw new ScheduleProcessingError(
+      throw new ScheduleError(
         `Failed to calculate schedule for ${year}年${month}月: ${error instanceof Error ? error.message : 'Unknown error'}`,
         'CALCULATION_ERROR',
         { originalError: error, year, month }
@@ -242,7 +242,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
       }
     } catch (err) {
       if (!abortControllerRef.current?.signal.aborted) {
-        const processedError = err instanceof ScheduleProcessingError 
+        const processedError = err instanceof ScheduleError 
           ? err 
           : new DatabaseOperationError('Failed to load schedule data', err);
         
@@ -345,7 +345,7 @@ export function useMultiMonthScheduleData(
         
         // Note: This would need to be implemented properly with actual data fetching
         // For now, it's a placeholder that shows the pattern
-        const key = `${year}-${month}`;
+        // const key = `${year}-${month}`;
         // const data = await fetchScheduleForMonth(year, month);
         // newData.set(key, data);
       }

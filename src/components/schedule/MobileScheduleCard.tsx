@@ -3,7 +3,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
-  PaymentScheduleView, 
   PaymentSummary, 
   TransactionDetailModalData, 
   MobileScheduleCardProps 
@@ -37,11 +36,11 @@ export function MobileScheduleCard({
         .map(tx => ({
           id: tx.id,
           date: new Date(tx.date).toLocaleDateString('ja-JP'),
-          storeName: tx.storeName,
-          usage: tx.usage,
+          storeName: tx.storeName || '',
+          usage: tx.usage || '',
           amount: tx.amount,
           paymentType: tx.paymentType,
-          cardName: tx.paymentType === 'card' ? payment.paymentName : undefined
+          cardName: tx.paymentType === 'card' ? (payment.paymentName || '') : ''
         })),
       totalAmount: bankPayment.amount
     };
@@ -58,11 +57,11 @@ export function MobileScheduleCard({
       transactions: payment.transactions.map(tx => ({
         id: tx.id,
         date: new Date(tx.date).toLocaleDateString('ja-JP'),
-        storeName: tx.storeName,
-        usage: tx.usage,
+        storeName: tx.storeName || '',
+        usage: tx.usage || '',
         amount: tx.amount,
         paymentType: tx.paymentType,
-        cardName: tx.paymentType === 'card' ? payment.paymentName : undefined
+        cardName: tx.paymentType === 'card' ? (payment.paymentName || '') : ''
       })),
       totalAmount: payment.totalAmount
     };
@@ -256,7 +255,7 @@ function PaymentCard({ payment, banks, onBankPaymentClick, onTotalClick }: Payme
               <span className="font-medium">取引数:</span> {payment.transactions.length}件
               {payment.transactions.length > 0 && (
                 <span className="ml-2">
-                  <span className="font-medium">店舗例:</span> {payment.transactions[0].storeName || '未設定'}
+                  <span className="font-medium">店舗例:</span> {payment.transactions[0]?.storeName || '未設定'}
                 </span>
               )}
             </div>
