@@ -20,14 +20,17 @@ const customJestConfig = {
   coverageDirectory: 'coverage',
   testTimeout: 10000,
   moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/src/$1'
   },
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(japanese-holidays-js)/)'
-  ]
+    'node_modules/(?!(japanese-holidays-js|dexie)/)'
+  ],
+  testEnvironmentOptions: {
+    resources: 'usable'
+  }
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

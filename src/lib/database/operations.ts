@@ -142,11 +142,11 @@ export class BankOperations {
         );
       }
       
-      // Check for dependent transactions
-      const dependentTransactions = await this.db.transactions.where('bankId').equals(id).count();
-      if (dependentTransactions > 0) {
+      // Check for dependent bank transactions
+      const dependentBankTransactions = await this.db.transactions.where('bankId').equals(id).count();
+      if (dependentBankTransactions > 0) {
         throw new ValidationError(
-          `Cannot delete bank. ${dependentTransactions} transactions are still using this bank.`
+          `Cannot delete bank. ${dependentBankTransactions} direct bank transactions are still using this bank.`
         );
       }
       
@@ -303,20 +303,40 @@ export class TransactionOperations {
       // Validate input (without scheduledPayDate as it will be calculated)
       const validatedData = TransactionInputSchema.parse(transactionData);
       
-      // Get card information for payment calculation
-      const card = await this.db.cards.get(validatedData.cardId);
-      if (!card) {
-        throw new ValidationError(`Card with ID "${validatedData.cardId}" not found`);
-      }
+      let scheduledPayDate: number;
       
-      // Calculate scheduled payment date
-      const { calculateCardPaymentDate } = await import('@/lib/utils/paymentCalc');
-      const transactionDate = new Date(validatedData.date);
-      const paymentResult = calculateCardPaymentDate(transactionDate, card);
+      // Calculate or use provided scheduled payment date
+      if (validatedData.scheduledPayDate && validatedData.isScheduleEditable) {
+        // Use manually edited scheduled payment date
+        scheduledPayDate = validatedData.scheduledPayDate;
+      } else if (validatedData.paymentType === 'card') {
+        // Calculate based on card settings
+        const card = await this.db.cards.get(validatedData.cardId!);
+        if (!card) {
+          throw new ValidationError(`Card with ID "${validatedData.cardId}" not found`);
+        }
+        
+        const { calculateCardPaymentDate } = await import('@/lib/utils/paymentCalc');
+        const transactionDate = new Date(validatedData.date);
+        const paymentResult = calculateCardPaymentDate(transactionDate, card);
+        scheduledPayDate = paymentResult.scheduledPayDate.getTime();
+      } else {
+        // Bank payment - calculate based on transaction date
+        const { calculateBankPaymentDate } = await import('@/lib/utils/paymentCalc');
+        const transactionDate = new Date(validatedData.date);
+        const paymentResult = calculateBankPaymentDate(transactionDate, true);
+        scheduledPayDate = paymentResult.scheduledPayDate.getTime();
+        
+        // Validate bank exists
+        const bank = await this.db.banks.get(validatedData.bankId!);
+        if (!bank) {
+          throw new ValidationError(`Bank with ID "${validatedData.bankId}" not found`);
+        }
+      }
       
       const transactionToCreate = {
         ...validatedData,
-        scheduledPayDate: paymentResult.scheduledPayDate.getTime(),
+        scheduledPayDate,
         createdAt: Date.now()
       };
       
@@ -357,15 +377,19 @@ export class TransactionOperations {
       }
       
       if (filters.bankId) {
-        query = query.filter(tx => tx.bankId === filters.bankId);
+        // For bank filter, we need to include both direct bank transactions and card transactions from that bank
+        // Note: This is a simplified filter - for complex queries we might need to do a join operation
+        query = query.filter(tx => 
+          tx.bankId === filters.bankId
+        );
       }
       
       if (filters.cardId) {
         query = query.filter(tx => tx.cardId === filters.cardId);
       }
       
-      if (filters.methodType) {
-        query = query.filter(tx => tx.methodType === filters.methodType);
+      if (filters.paymentType) {
+        query = query.filter(tx => tx.paymentType === filters.paymentType);
       }
       
       if (filters.minAmount !== undefined) {
@@ -412,39 +436,71 @@ export class TransactionOperations {
       const cards = await Promise.all(cardIds.map(id => this.db.cards.get(id!)));
       const cardsMap = new Map(cards.filter(Boolean).map(card => [card!.id, card!]));
       
-      // Then get related banks from cards
-      const bankIds = [...new Set(cards.filter(Boolean).map(card => card!.bankId))];
-      const banks = await Promise.all(bankIds.map(id => this.db.banks.get(id)));
+      // Get all bank IDs from both card transactions and direct bank transactions
+      const bankIdsFromCards = cards.filter(Boolean).map(card => card!.bankId);
+      const bankIdsFromTransactions = transactions.map(tx => tx.bankId).filter(Boolean);
+      const allBankIds = [...new Set([...bankIdsFromCards, ...bankIdsFromTransactions])];
       
+      const banks = await Promise.all(allBankIds.map(id => this.db.banks.get(id!)));
       const banksMap = new Map(banks.filter(Boolean).map(bank => [bank!.id, bank!]));
       
       // Create schedule items
-      const items: ScheduleItem[] = transactions.map(tx => ({
-        transactionId: tx.id,
-        date: new Date(tx.scheduledPayDate),
-        bankName: banksMap.get(cardsMap.get(tx.cardId)?.bankId!)?.name || 'Unknown Bank',
-        storeName: tx.storeName,
-        usage: tx.usage,
-        amount: tx.amount,
-        methodType: 'card' as const, // All transactions are card transactions
-        cardName: tx.cardId ? cardsMap.get(tx.cardId)?.name : undefined
-      }));
+      const items: ScheduleItem[] = transactions.map(tx => {
+        let bankName = 'Unknown Bank';
+        let cardName: string | undefined;
+        
+        if (tx.paymentType === 'card' && tx.cardId) {
+          const card = cardsMap.get(tx.cardId);
+          if (card) {
+            const bank = banksMap.get(card.bankId);
+            bankName = bank?.name || `Unknown Bank (Card Bank ID: ${card.bankId})`;
+            cardName = card.name;
+          }
+        } else if (tx.paymentType === 'bank' && tx.bankId) {
+          const bank = banksMap.get(tx.bankId);
+          if (!bank) {
+            console.warn(`Bank not found for transaction ID: ${tx.id}, bankId: ${tx.bankId}`);
+            console.warn('Available banks:', Array.from(banksMap.keys()));
+          }
+          bankName = bank?.name || `Unknown Bank (ID: ${tx.bankId})`;
+        }
+        
+        return {
+          transactionId: tx.id,
+          date: new Date(tx.scheduledPayDate),
+          bankName,
+          storeName: tx.storeName,
+          usage: tx.usage,
+          amount: tx.amount,
+          paymentType: tx.paymentType,
+          cardName,
+          isScheduleEditable: tx.isScheduleEditable
+        };
+      });
       
       // Calculate bank totals
       const bankTotalsMap = new Map<string, BankTotal>();
       
       transactions.forEach(tx => {
-        if (!tx.cardId) return;
+        let bankId: string | undefined;
+        let bankName: string | undefined;
         
-        const card = cardsMap.get(tx.cardId);
-        if (!card) return;
+        if (tx.paymentType === 'card' && tx.cardId) {
+          const card = cardsMap.get(tx.cardId);
+          if (card) {
+            bankId = card.bankId;
+            bankName = banksMap.get(card.bankId)?.name;
+          }
+        } else if (tx.paymentType === 'bank' && tx.bankId) {
+          bankId = tx.bankId;
+          bankName = banksMap.get(tx.bankId)?.name;
+        }
         
-        const bank = banksMap.get(card.bankId);
-        if (!bank) return;
+        if (!bankId || !bankName) return;
         
-        const current = bankTotalsMap.get(card.bankId) || {
-          bankId: card.bankId,
-          bankName: bank.name,
+        const current = bankTotalsMap.get(bankId) || {
+          bankId,
+          bankName,
           totalAmount: 0,
           transactionCount: 0
         };
@@ -452,7 +508,7 @@ export class TransactionOperations {
         current.totalAmount += tx.amount;
         current.transactionCount += 1;
         
-        bankTotalsMap.set(card.bankId, current);
+        bankTotalsMap.set(bankId, current);
       });
       
       const bankTotals = Array.from(bankTotalsMap.values());
@@ -481,17 +537,34 @@ export class TransactionOperations {
       }
       
       // Validate references if being updated
-      if (updates.bankId) {
+      if (updates.paymentType === 'bank' && updates.bankId) {
         const bank = await this.db.banks.get(updates.bankId);
         if (!bank) {
           throw new ValidationError(`Bank with ID "${updates.bankId}" not found`);
         }
       }
       
-      if (updates.cardId) {
+      if (updates.paymentType === 'card' && updates.cardId) {
         const card = await this.db.cards.get(updates.cardId);
         if (!card) {
           throw new ValidationError(`Card with ID "${updates.cardId}" not found`);
+        }
+      }
+      
+      // Recalculate scheduled payment date if payment method changes and not manually edited
+      if (updates.paymentType && !updates.isScheduleEditable) {
+        const { calculateCardPaymentDate, calculateBankPaymentDate } = await import('@/lib/utils/paymentCalc');
+        const transactionDate = new Date(updates.date || existing.date);
+        
+        if (updates.paymentType === 'card' && updates.cardId) {
+          const card = await this.db.cards.get(updates.cardId);
+          if (card) {
+            const result = calculateCardPaymentDate(transactionDate, card);
+            updates.scheduledPayDate = result.scheduledPayDate.getTime();
+          }
+        } else if (updates.paymentType === 'bank') {
+          const result = calculateBankPaymentDate(transactionDate, true);
+          updates.scheduledPayDate = result.scheduledPayDate.getTime();
         }
       }
       

@@ -4,7 +4,7 @@ import { Bank, Card, Transaction, DatabaseOperationError } from '@/types/databas
 import { SessionKeyManager } from './encryption';
 
 // Database schema version (match current database version)
-const CURRENT_VERSION = 10;
+const CURRENT_VERSION = 11;
 
 // Sample data for development and testing
 const SAMPLE_BANKS: Bank[] = [
@@ -82,7 +82,7 @@ export class PaymentDatabase extends Dexie {
   constructor() {
     super('PaymentScheduleDB');
     
-    // Define database schema
+    // Define database schema with migration
     this.version(CURRENT_VERSION).stores({
       // Banks table - indexed by id, name, and createdAt for queries
       banks: 'id, name, createdAt',
@@ -91,7 +91,22 @@ export class PaymentDatabase extends Dexie {
       cards: 'id, name, bankId, createdAt',
       
       // Transactions table - indexed by key fields for efficient queries  
-      transactions: 'id, date, cardId, scheduledPayDate, createdAt'
+      transactions: 'id, date, paymentType, cardId, bankId, scheduledPayDate, createdAt'
+    }).upgrade(tx => {
+      // Migrate existing transactions to new schema
+      return tx.table('transactions').toCollection().modify(transaction => {
+        // Add default values for new fields if they don't exist
+        if (!transaction.paymentType) {
+          transaction.paymentType = 'card'; // Default to card for existing transactions
+        }
+        if (!transaction.bankId && transaction.paymentType === 'card') {
+          // For card transactions, bankId can be derived from cardId later
+          transaction.bankId = undefined;
+        }
+        if (transaction.isScheduleEditable === undefined) {
+          transaction.isScheduleEditable = false; // Default to auto-calculated
+        }
+      });
     });
     
     // Set up hooks for validation and auto-generated fields
