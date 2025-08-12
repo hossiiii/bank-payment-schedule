@@ -167,11 +167,9 @@ export function useBanks() {
   }, []);
   
   const updateBank = useCallback(async (id: string, updates: Partial<BankInput>): Promise<Bank> => {
+    const originalBanks = state.data; // Store original for rollback
     try {
       setState(prev => ({ ...prev, error: null }));
-      
-      // Store original for rollback
-      const originalBanks = state.data;
       
       // Optimistic update
       setState(prev => ({
@@ -207,11 +205,9 @@ export function useBanks() {
   }, []);
   
   const deleteBank = useCallback(async (id: string): Promise<void> => {
+    const originalBanks = state.data; // Store original for rollback
     try {
       setState(prev => ({ ...prev, error: null }));
-      
-      // Store original for rollback
-      const originalBanks = state.data;
       
       // Optimistic update
       setState(prev => ({

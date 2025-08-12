@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ScheduleFilters, ScheduleFiltersProps, Bank } from '@/types/schedule';
+import { ScheduleFilters, ScheduleFiltersProps } from '@/types/schedule';
 import { Input } from '@/components/ui/Input';
 import { formatDateISO } from '@/lib/utils/dateUtils';
 
@@ -55,15 +55,15 @@ export function ScheduleFiltersComponent({
       const newFilters = { ...localFilters };
       if (field === 'min' && newFilters.amountRange) {
         if (newFilters.amountRange.max === undefined) {
-          delete newFilters.amountRange;
+          newFilters.amountRange = undefined;
         } else {
-          delete newFilters.amountRange.min;
+          newFilters.amountRange.min = undefined;
         }
       } else if (field === 'max' && newFilters.amountRange) {
         if (newFilters.amountRange.min === undefined) {
-          delete newFilters.amountRange;
+          newFilters.amountRange = undefined;
         } else {
-          delete newFilters.amountRange.max;
+          newFilters.amountRange.max = undefined;
         }
       }
       applyFilters(newFilters);

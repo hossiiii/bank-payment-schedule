@@ -18,9 +18,7 @@ import {
 import {
   validateAmount,
   validateStoreName,
-  validateUsage,
-  formatAmount,
-  parseAmount
+  validateUsage
 } from '@/lib/utils/validation';
 import { formatJapaneseDate, formatDateISO } from '@/lib/utils/dateUtils';
 import { calculateCardPaymentDate, calculateBankPaymentDate } from '@/lib/utils/paymentCalc';
@@ -29,9 +27,9 @@ export interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (transaction: TransactionInput) => Promise<void>;
-  onDelete?: (transactionId: string) => Promise<void>;
+  onDelete?: ((transactionId: string) => Promise<void>) | undefined;
   selectedDate: Date;
-  transaction?: Transaction;
+  transaction?: Transaction | undefined;
   banks: Bank[];
   cards: Card[];
   isLoading?: boolean;
@@ -102,8 +100,8 @@ export function TransactionModal({
           usage: '',
           amount: '',
           paymentType: defaultPaymentType,
-          cardId: cards.length === 1 ? cards[0].id : '',
-          bankId: banks.length === 1 ? banks[0].id : '',
+          cardId: cards.length === 1 ? cards[0]?.id || '' : '',
+          bankId: banks.length === 1 ? banks[0]?.id || '' : '',
           scheduledPayDate: formatDateISO(selectedDate),
           isScheduleEditable: false,
           memo: ''
@@ -153,19 +151,19 @@ export function TransactionModal({
     // Validate amount
     const amountValidation = validateAmount(formData.amount);
     if (!amountValidation.isValid) {
-      newErrors.amount = amountValidation.errors[0];
+      newErrors.amount = amountValidation.errors[0] || 'Invalid amount';
     }
 
     // Validate store name
     const storeValidation = validateStoreName(formData.storeName);
     if (!storeValidation.isValid) {
-      newErrors.storeName = storeValidation.errors[0];
+      newErrors.storeName = storeValidation.errors[0] || 'Invalid store name';
     }
 
     // Validate usage
     const usageValidation = validateUsage(formData.usage);
     if (!usageValidation.isValid) {
-      newErrors.usage = usageValidation.errors[0];
+      newErrors.usage = usageValidation.errors[0] || 'Invalid usage';
     }
 
     // Validate payment method selection

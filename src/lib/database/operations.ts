@@ -13,7 +13,6 @@ import {
   ValidationError,
   BankSchema,
   CardSchema,
-  TransactionSchema,
   TransactionInputSchema,
   TransactionCreateSchema
 } from '@/types/database';
@@ -163,10 +162,13 @@ export class BankOperations {
         );
       }
       
-      const deleted = await this.db.banks.delete(id);
-      if (deleted === 0) {
+      // Check if bank exists first
+      const bankExists = await this.db.banks.get(id);
+      if (!bankExists) {
         throw new ValidationError(`Bank with ID "${id}" not found`);
       }
+      
+      await this.db.banks.delete(id);
     });
   }
   
@@ -296,10 +298,13 @@ export class CardOperations {
         );
       }
       
-      const deleted = await this.db.cards.delete(id);
-      if (deleted === 0) {
+      // Check if card exists first
+      const cardExists = await this.db.cards.get(id);
+      if (!cardExists) {
         throw new ValidationError(`Card with ID "${id}" not found`);
       }
+      
+      await this.db.cards.delete(id);
     });
   }
 }
@@ -595,24 +600,27 @@ export class TransactionOperations {
    */
   async delete(id: string): Promise<void> {
     return withRetry(async () => {
-      const deleted = await this.db.transactions.delete(id);
-      if (deleted === 0) {
+      // Check if transaction exists first
+      const transactionExists = await this.db.transactions.get(id);
+      if (!transactionExists) {
         throw new ValidationError(`Transaction with ID "${id}" not found`);
       }
+      
+      await this.db.transactions.delete(id);
     });
   }
   
   /**
    * Bulk updates scheduled payment dates for card transactions
    */
-  async updateScheduledPayDatesForCard(cardId: string, newDates: Record<string, number>): Promise<void> {
+  async updateScheduledPayDatesForCard(_cardId: string, newDates: Record<string, number>): Promise<void> {
     return withRetry(async () => {
-      const updates = Object.entries(newDates).map(([transactionId, scheduledPayDate]) => ({
-        key: transactionId,
-        changes: { scheduledPayDate }
-      }));
+      // Update each transaction individually
+      const updatePromises = Object.entries(newDates).map(([transactionId, scheduledPayDate]) =>
+        this.db.transactions.update(transactionId, { scheduledPayDate })
+      );
       
-      await this.db.transactions.bulkUpdate(updates);
+      await Promise.all(updatePromises);
     });
   }
 }

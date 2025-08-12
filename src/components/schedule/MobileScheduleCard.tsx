@@ -3,7 +3,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
-  PaymentScheduleView, 
   PaymentSummary, 
   TransactionDetailModalData, 
   MobileScheduleCardProps 
@@ -256,7 +255,7 @@ function PaymentCard({ payment, banks, onBankPaymentClick, onTotalClick }: Payme
               <span className="font-medium">取引数:</span> {payment.transactions.length}件
               {payment.transactions.length > 0 && (
                 <span className="ml-2">
-                  <span className="font-medium">店舗例:</span> {payment.transactions[0].storeName || '未設定'}
+                  <span className="font-medium">店舗例:</span> {payment.transactions[0]?.storeName || '未設定'}
                 </span>
               )}
             </div>

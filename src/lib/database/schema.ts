@@ -201,7 +201,7 @@ export class PaymentDatabase extends Dexie {
    * TODO: Re-implement with working encryption
    * Initializes the database with encryption using the provided password
    */
-  async initializeWithPassword(password: string): Promise<void> {
+  async initializeWithPassword(_password: string): Promise<void> {
     // Temporarily delegate to basic initialization
     return this.initialize();
   }
@@ -211,7 +211,7 @@ export class PaymentDatabase extends Dexie {
    */
   private setupHooks(): void {
     // Hook for banks table
-    this.banks.hook('creating', (primKey, obj, trans) => {
+    this.banks.hook('creating', (_primKey, obj, _trans) => {
       if (!obj.id) {
         obj.id = this.generateUUID();
       }
@@ -221,7 +221,7 @@ export class PaymentDatabase extends Dexie {
     });
     
     // Hook for cards table
-    this.cards.hook('creating', (primKey, obj, trans) => {
+    this.cards.hook('creating', (_primKey, obj, _trans) => {
       if (!obj.id) {
         obj.id = this.generateUUID();
       }
@@ -231,7 +231,7 @@ export class PaymentDatabase extends Dexie {
     });
     
     // Hook for transactions table
-    this.transactions.hook('creating', (primKey, obj, trans) => {
+    this.transactions.hook('creating', (_primKey, obj, _trans) => {
       if (!obj.id) {
         obj.id = this.generateUUID();
       }
@@ -241,22 +241,22 @@ export class PaymentDatabase extends Dexie {
     });
     
     // Validation hooks
-    this.banks.hook('updating', (modifications, primKey, obj, trans) => {
+    this.banks.hook('updating', (modifications, _primKey, _obj, _trans) => {
       // Prevent updating createdAt
-      if (modifications.createdAt !== undefined) {
-        delete modifications.createdAt;
+      if ('createdAt' in modifications) {
+        delete (modifications as any).createdAt;
       }
     });
     
-    this.cards.hook('updating', (modifications, primKey, obj, trans) => {
-      if (modifications.createdAt !== undefined) {
-        delete modifications.createdAt;
+    this.cards.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      if ('createdAt' in modifications) {
+        delete (modifications as any).createdAt;
       }
     });
     
-    this.transactions.hook('updating', (modifications, primKey, obj, trans) => {
-      if (modifications.createdAt !== undefined) {
-        delete modifications.createdAt;
+    this.transactions.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      if ('createdAt' in modifications) {
+        delete (modifications as any).createdAt;
       }
     });
   }

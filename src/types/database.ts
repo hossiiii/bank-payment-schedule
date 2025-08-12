@@ -4,7 +4,7 @@ import { z } from 'zod';
 export interface Bank {
   id: string;           // UUID
   name: string;         // 銀行名
-  memo?: string;        // 任意メモ
+  memo?: string | undefined;        // 任意メモ
   createdAt: number;    // timestamp
 }
 
@@ -16,22 +16,22 @@ export interface Card {
   paymentDay: string;           // 引落日（"数値" or "月末"）
   paymentMonthShift: number;    // 0=当月, 1=翌月, 2=翌々月
   adjustWeekend: boolean;       // 土日祝調整有無
-  memo?: string;                // メモ（任意）
+  memo?: string | undefined;                // メモ（任意）
   createdAt: number;           // 登録日時
 }
 
 export interface Transaction {
   id: string;                   // UUID
   date: number;                // 取引日（timestamp）
-  storeName?: string;          // 使用店舗（任意）
-  usage?: string;              // 用途（任意）
+  storeName?: string | undefined;          // 使用店舗（任意）
+  usage?: string | undefined;              // 用途（任意）
   amount: number;              // 金額
   paymentType: 'card' | 'bank'; // 支払いタイプ
-  cardId?: string;             // カードID（カード払いの場合）
-  bankId?: string;             // 銀行ID（銀行引落の場合）
+  cardId?: string | undefined;             // カードID（カード払いの場合）
+  bankId?: string | undefined;             // 銀行ID（銀行引落の場合）
   scheduledPayDate: number;    // 引落予定日（timestamp）
-  isScheduleEditable?: boolean; // スケジュール編集可能フラグ
-  memo?: string;               // メモ（任意）
+  isScheduleEditable?: boolean | undefined; // スケジュール編集可能フラグ
+  memo?: string | undefined;               // メモ（任意）
   createdAt: number;           // 登録日時
 }
 
@@ -176,15 +176,15 @@ export interface ScheduleItem {
   transactionId: string;
   date: Date;
   bankName: string;
-  storeName?: string;
-  usage?: string;
+  storeName?: string | undefined;
+  usage?: string | undefined;
   amount: number;
   paymentType: 'bank' | 'card';
-  cardId?: string;
-  cardName?: string;
-  transactionDate?: number;
-  paymentDate?: number;
-  isScheduleEditable?: boolean;
+  cardId?: string | undefined;
+  cardName?: string | undefined;
+  transactionDate?: number | undefined;
+  paymentDate?: number | undefined;
+  isScheduleEditable?: boolean | undefined;
 }
 
 // Error types

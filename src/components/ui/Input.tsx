@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
-  error?: string;
+  error?: string | undefined;
   helperText?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'filled';

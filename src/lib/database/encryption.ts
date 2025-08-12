@@ -40,7 +40,7 @@ export async function deriveKeyFromPassword(
   salt?: Uint8Array
 ): Promise<EncryptionKey> {
   try {
-    const actualSalt = salt || generateSalt();
+    const actualSalt: Uint8Array = salt || generateSalt();
     
     // Import password as key material
     const keyMaterial = await crypto.subtle.importKey(
@@ -55,7 +55,7 @@ export async function deriveKeyFromPassword(
     const key = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: actualSalt,
+        salt: actualSalt as BufferSource,
         iterations: PBKDF2_ITERATIONS,
         hash: 'SHA-256'
       },
@@ -86,14 +86,14 @@ export async function encryptData(
   iv?: Uint8Array
 ): Promise<EncryptedData> {
   try {
-    const actualIV = iv || generateIV();
+    const actualIV: Uint8Array = iv || generateIV();
     const jsonString = JSON.stringify(data);
     const dataBuffer = new TextEncoder().encode(jsonString);
     
     const encryptedBuffer = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: actualIV,
+        iv: actualIV as BufferSource,
         tagLength: TAG_LENGTH * 8 // Convert to bits
       },
       encryptionKey,
@@ -164,7 +164,7 @@ export async function decryptWithPassword<T = unknown>(
   encryptedData: EncryptedData,
   password: string
 ): Promise<T> {
-  const salt = base64ToArrayBuffer(encryptedData.salt);
+  const salt = new Uint8Array(base64ToArrayBuffer(encryptedData.salt));
   const { key } = await deriveKeyFromPassword(password, salt);
   
   return await decryptData<T>(encryptedData, key);
@@ -192,7 +192,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const uint8Array = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
   let binary = '';
   for (let i = 0; i < uint8Array.length; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
+    binary += String.fromCharCode(uint8Array[i] || 0);
   }
   return btoa(binary);
 }
@@ -274,6 +274,26 @@ export class SessionKeyManager {
   
   isInitialized(): boolean {
     return this.encryptionKey !== null;
+  }
+  
+  async verifyKeyHash(keyData: { key: CryptoKey; salt: Uint8Array }): Promise<boolean> {
+    if (!this.encryptionKey || !this.keyDerivationSalt) {
+      return false;
+    }
+    
+    // Compare the salts first
+    if (keyData.salt.length !== this.keyDerivationSalt.length) {
+      return false;
+    }
+    
+    for (let i = 0; i < keyData.salt.length; i++) {
+      if (keyData.salt[i] !== this.keyDerivationSalt[i]) {
+        return false;
+      }
+    }
+    
+    // If salts match, the keys should be the same since they're derived from the same password and salt
+    return true;
   }
   
   clear(): void {

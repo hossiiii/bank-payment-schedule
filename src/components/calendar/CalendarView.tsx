@@ -6,7 +6,6 @@ import {
   createCalendarGrid,
   getCurrentJapanDate,
   getMonthNameJP,
-  getWeekdayNameJP,
   formatDateISO,
   isSameDay,
   type CalendarDay 
@@ -18,7 +17,7 @@ export interface CalendarViewProps {
   year: number;
   month: number;
   transactions: Transaction[];
-  schedule?: MonthlySchedule;
+  schedule?: MonthlySchedule | null;
   onDateClick: (date: Date) => void;
   onTransactionClick: (transaction: Transaction) => void;
   className?: string;
@@ -91,7 +90,6 @@ export function CalendarView({
     onTransactionClick(transaction);
   };
 
-  const today = getCurrentJapanDate();
   const weekdayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
 
   return (
@@ -166,7 +164,7 @@ export function CalendarView({
 
               {/* Transactions */}
               <div className="flex-1 space-y-1">
-                {dayTransactions.slice(0, 2).map((transaction, txIndex) => (
+                {dayTransactions.slice(0, 2).map((transaction) => (
                   <div
                     key={transaction.id}
                     onClick={(e) => handleTransactionClick(e, transaction)}

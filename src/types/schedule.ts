@@ -31,7 +31,7 @@ export interface BankPayment {
 // Filtering interfaces
 export interface ScheduleFilters {
   dateRange?: { start: Date; end: Date };
-  amountRange?: { min: number; max: number };
+  amountRange?: { min?: number | undefined; max?: number | undefined } | undefined;
   searchText?: string;              // 店舗名/用途検索
   bankIds?: string[];               // 銀行絞り込み
   paymentTypes?: ('card' | 'bank')[]; // 支払い方法絞り込み
@@ -49,11 +49,11 @@ export interface TransactionDetailModalData {
 export interface TransactionDetail {
   id: string;                       // 取引ID
   date: string;                     // 取引日
-  storeName?: string;               // 店舗名
-  usage?: string;                   // 用途
+  storeName?: string | undefined;   // 店舗名
+  usage?: string | undefined;       // 用途
   amount: number;                   // 金額
   paymentType: 'card' | 'bank';     // 支払い方法
-  cardName?: string;                // カード名（カードの場合）
+  cardName?: string | undefined;    // カード名（カードの場合）
 }
 
 // Bank information for column generation
@@ -143,14 +143,27 @@ export interface Card {
 }
 
 // Error types specific to schedule processing
-export interface ScheduleProcessingError extends Error {
-  code: 'INVALID_DATE' | 'MISSING_CARD' | 'MISSING_BANK' | 'CALCULATION_ERROR';
-  details?: {
-    transactionId?: string;
-    cardId?: string;
-    bankId?: string;
-    originalError?: Error;
-  };
+export interface ScheduleProcessingErrorDetails {
+  transactionId?: string;
+  cardId?: string;
+  bankId?: string;
+  originalError?: Error;
+}
+
+export class ScheduleProcessingError extends Error {
+  public readonly code: 'INVALID_DATE' | 'MISSING_CARD' | 'MISSING_BANK' | 'CALCULATION_ERROR';
+  public readonly details?: ScheduleProcessingErrorDetails;
+
+  constructor(
+    message: string, 
+    code: 'INVALID_DATE' | 'MISSING_CARD' | 'MISSING_BANK' | 'CALCULATION_ERROR',
+    details?: ScheduleProcessingErrorDetails
+  ) {
+    super(message);
+    this.name = 'ScheduleProcessingError';
+    this.code = code;
+    this.details = details;
+  }
 }
 
 // Sort options for the table

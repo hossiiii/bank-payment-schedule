@@ -17,9 +17,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
             maxEntries: 10,
             maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
           },
-          cacheKeyWillBeUsed: async ({ request }) => {
-            return `${request.url}?${Math.round(Date.now() / (1000 * 60 * 60 * 24))}`;
-          },
         },
       },
       {
