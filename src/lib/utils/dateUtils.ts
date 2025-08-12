@@ -63,7 +63,10 @@ export function formatDateISO(date: Date): string {
  * Parses an ISO date string to Date object
  */
 export function parseISODate(isoString: string): Date {
-  const [year, month, day] = isoString.split('-').map(Number);
+  const parts = isoString.split('-').map(Number);
+  const year = parts[0] ?? 0;
+  const month = parts[1] ?? 1;
+  const day = parts[2] ?? 1;
   return createJapanDate(year, month, day);
 }
 
@@ -215,14 +218,14 @@ export function getMonthNameJP(month: number): string {
   if (month < 1 || month > 12) {
     throw new Error('Month must be between 1 and 12');
   }
-  return MONTH_NAMES_JP[month - 1];
+  return MONTH_NAMES_JP[month - 1] ?? '';
 }
 
 /**
  * Gets the weekday name in Japanese
  */
 export function getWeekdayNameJP(date: Date): string {
-  return WEEKDAY_NAMES_JP[date.getDay()];
+  return WEEKDAY_NAMES_JP[date.getDay()] ?? '';
 }
 
 /**

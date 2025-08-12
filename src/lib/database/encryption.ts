@@ -55,7 +55,7 @@ export async function deriveKeyFromPassword(
     const key = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: actualSalt,
+        salt: actualSalt as BufferSource,
         iterations: PBKDF2_ITERATIONS,
         hash: 'SHA-256'
       },
@@ -93,7 +93,7 @@ export async function encryptData(
     const encryptedBuffer = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: actualIV,
+        iv: actualIV as BufferSource,
         tagLength: TAG_LENGTH * 8 // Convert to bits
       },
       encryptionKey,
@@ -165,7 +165,7 @@ export async function decryptWithPassword<T = unknown>(
   password: string
 ): Promise<T> {
   const salt = base64ToArrayBuffer(encryptedData.salt);
-  const { key } = await deriveKeyFromPassword(password, salt);
+  const { key } = await deriveKeyFromPassword(password, new Uint8Array(salt));
   
   return await decryptData<T>(encryptedData, key);
 }
@@ -192,7 +192,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const uint8Array = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
   let binary = '';
   for (let i = 0; i < uint8Array.length; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
+    binary += String.fromCharCode(uint8Array[i]!);
   }
   return btoa(binary);
 }
@@ -239,48 +239,138 @@ export async function generatePasswordTestPayload(password: string): Promise<Enc
  * Key management utilities for session storage
  */
 export class SessionKeyManager {
-  private static instance: SessionKeyManager;
-  private encryptionKey: CryptoKey | null = null;
-  private keyDerivationSalt: Uint8Array | null = null;
+  private sessionKey: CryptoKey | null = null;
+  private sessionExpiresAt: number | null = null;
+  private storedKeyHash: string | null = null;
   
-  private constructor() {}
-  
-  static getInstance(): SessionKeyManager {
-    if (!SessionKeyManager.instance) {
-      SessionKeyManager.instance = new SessionKeyManager();
+  constructor() {
+    // Try to load stored key hash from localStorage
+    if (typeof window !== 'undefined') {
+      this.storedKeyHash = localStorage.getItem('encryption_key_hash');
     }
-    return SessionKeyManager.instance;
   }
   
-  async initializeWithPassword(password: string, salt?: Uint8Array): Promise<void> {
-    const { key, salt: derivedSalt } = await deriveKeyFromPassword(password, salt);
-    this.encryptionKey = key;
-    this.keyDerivationSalt = derivedSalt;
-  }
-  
-  getEncryptionKey(): CryptoKey {
-    if (!this.encryptionKey) {
-      throw new EncryptionError('Encryption key not initialized');
+  /**
+   * Store the hash of a derived key for later verification
+   */
+  async storeKeyHash(encryptionKey: EncryptionKey): Promise<void> {
+    try {
+      // Export the key to raw format for hashing
+      const keyData = await crypto.subtle.exportKey('raw', encryptionKey.key);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hashBase64 = arrayBufferToBase64(hashArray);
+      
+      this.storedKeyHash = hashBase64;
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('encryption_key_hash', hashBase64);
+      }
+    } catch (error) {
+      throw new EncryptionError('Failed to store key hash', error);
     }
-    return this.encryptionKey;
   }
   
-  getKeySalt(): Uint8Array {
-    if (!this.keyDerivationSalt) {
-      throw new EncryptionError('Key salt not available');
+  /**
+   * Verify if a derived key matches the stored hash
+   */
+  async verifyKeyHash(encryptionKey: EncryptionKey): Promise<boolean> {
+    if (!this.storedKeyHash) {
+      return false;
     }
-    return this.keyDerivationSalt;
+    
+    try {
+      // Export the key to raw format for hashing
+      const keyData = await crypto.subtle.exportKey('raw', encryptionKey.key);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hashBase64 = arrayBufferToBase64(hashArray);
+      
+      return hashBase64 === this.storedKeyHash;
+    } catch (error) {
+      throw new EncryptionError('Failed to verify key hash', error);
+    }
   }
   
-  isInitialized(): boolean {
-    return this.encryptionKey !== null;
+  /**
+   * Check if there's a stored key hash
+   */
+  async hasStoredKey(): Promise<boolean> {
+    return this.storedKeyHash !== null;
   }
   
-  clear(): void {
-    this.encryptionKey = null;
-    if (this.keyDerivationSalt) {
-      wipeSensitiveData(this.keyDerivationSalt);
-      this.keyDerivationSalt = null;
+  /**
+   * Create a new session with the given key
+   */
+  async createSession(encryptionKey: EncryptionKey, durationHours: number = 8): Promise<number> {
+    this.sessionKey = encryptionKey.key;
+    this.sessionExpiresAt = Date.now() + (durationHours * 60 * 60 * 1000);
+    return this.sessionExpiresAt;
+  }
+  
+  /**
+   * Extend the current session
+   */
+  async extendSession(additionalMilliseconds: number): Promise<number> {
+    if (!this.sessionKey || !this.sessionExpiresAt) {
+      throw new EncryptionError('No active session to extend');
+    }
+    
+    this.sessionExpiresAt = Math.max(this.sessionExpiresAt, Date.now()) + additionalMilliseconds;
+    return this.sessionExpiresAt;
+  }
+  
+  /**
+   * Check if there's an active session
+   */
+  hasActiveSession(): boolean {
+    if (!this.sessionKey || !this.sessionExpiresAt) {
+      return false;
+    }
+    
+    if (Date.now() >= this.sessionExpiresAt) {
+      this.clearSession();
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Get the current session key
+   */
+  getSessionKey(): CryptoKey | null {
+    if (!this.hasActiveSession()) {
+      return null;
+    }
+    return this.sessionKey;
+  }
+  
+  /**
+   * Get session expiration timestamp
+   */
+  getSessionExpiration(): number | null {
+    if (!this.hasActiveSession()) {
+      return null;
+    }
+    return this.sessionExpiresAt;
+  }
+  
+  /**
+   * Clear the current session
+   */
+  clearSession(): void {
+    this.sessionKey = null;
+    this.sessionExpiresAt = null;
+  }
+  
+  /**
+   * Clear the stored key hash (destructive operation)
+   */
+  async clearStoredKey(): Promise<void> {
+    this.storedKeyHash = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('encryption_key_hash');
     }
   }
 }

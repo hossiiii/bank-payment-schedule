@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { PaymentScheduleView, TransactionDetailModalData, CrossTableProps } from '@/types/schedule';
+import { PaymentScheduleView, TransactionDetailModalData } from '@/types/schedule';
 import { formatAmount } from '@/lib/utils/scheduleUtils';
 import { PaymentRow } from './PaymentRow';
 

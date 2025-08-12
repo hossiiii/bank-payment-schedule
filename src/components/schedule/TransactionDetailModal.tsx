@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { 
-  TransactionDetailModalData, 
   TransactionDetailModalProps 
 } from '@/types/schedule';
 import { Modal, ModalBody, ModalHeader } from '@/components/ui/Modal';

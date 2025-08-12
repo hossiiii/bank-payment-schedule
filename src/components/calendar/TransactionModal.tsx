@@ -18,9 +18,7 @@ import {
 import {
   validateAmount,
   validateStoreName,
-  validateUsage,
-  formatAmount,
-  parseAmount
+  validateUsage
 } from '@/lib/utils/validation';
 import { formatJapaneseDate, formatDateISO } from '@/lib/utils/dateUtils';
 import { calculateCardPaymentDate, calculateBankPaymentDate } from '@/lib/utils/paymentCalc';
@@ -102,8 +100,8 @@ export function TransactionModal({
           usage: '',
           amount: '',
           paymentType: defaultPaymentType,
-          cardId: cards.length === 1 ? cards[0].id : '',
-          bankId: banks.length === 1 ? banks[0].id : '',
+          cardId: cards.length === 1 ? cards[0]?.id ?? '' : '',
+          bankId: banks.length === 1 ? banks[0]?.id ?? '' : '',
           scheduledPayDate: formatDateISO(selectedDate),
           isScheduleEditable: false,
           memo: ''
@@ -153,19 +151,19 @@ export function TransactionModal({
     // Validate amount
     const amountValidation = validateAmount(formData.amount);
     if (!amountValidation.isValid) {
-      newErrors.amount = amountValidation.errors[0];
+      newErrors.amount = amountValidation.errors[0] ?? 'Invalid amount';
     }
 
     // Validate store name
     const storeValidation = validateStoreName(formData.storeName);
     if (!storeValidation.isValid) {
-      newErrors.storeName = storeValidation.errors[0];
+      newErrors.storeName = storeValidation.errors[0] ?? 'Invalid store name';
     }
 
     // Validate usage
     const usageValidation = validateUsage(formData.usage);
     if (!usageValidation.isValid) {
-      newErrors.usage = usageValidation.errors[0];
+      newErrors.usage = usageValidation.errors[0] ?? 'Invalid usage';
     }
 
     // Validate payment method selection
@@ -447,7 +445,7 @@ export function TransactionModal({
             value={formData.amount}
             onChange={handleInputChange('amount')}
             disabled={isFormDisabled}
-            error={errors.amount}
+            {...(errors.amount && { error: errors.amount })}
             placeholder="1000"
             rightIcon={
               <span className="text-gray-500 text-sm">円</span>
@@ -461,7 +459,7 @@ export function TransactionModal({
             value={formData.storeName}
             onChange={handleInputChange('storeName')}
             disabled={isFormDisabled}
-            error={errors.storeName}
+            {...(errors.storeName && { error: errors.storeName })}
             placeholder="コンビニA"
             helperText="支払いを行った店舗名（省略可）"
           />
@@ -473,7 +471,7 @@ export function TransactionModal({
             value={formData.usage}
             onChange={handleInputChange('usage')}
             disabled={isFormDisabled}
-            error={errors.usage}
+            {...(errors.usage && { error: errors.usage })}
             placeholder="食費"
             helperText="何に使ったかの説明（省略可）"
           />

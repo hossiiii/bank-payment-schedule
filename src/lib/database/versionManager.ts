@@ -145,7 +145,7 @@ export class VersionManager {
     const history = this.getMigrationHistory();
     const successful = history.filter(r => r.success);
     if (successful.length > 0) {
-      return successful[successful.length - 1];
+      return successful[successful.length - 1] ?? null;
     }
     return null;
   }

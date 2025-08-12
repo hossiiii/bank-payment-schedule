@@ -2,18 +2,15 @@ import {
   PaymentScheduleView, 
   PaymentSummary, 
   BankPayment, 
-  Bank, 
-  Card,
   GroupedTransaction,
   ScheduleCalculationParams,
   ScheduleProcessingError
 } from '@/types/schedule';
-import { Transaction, MonthlySchedule, ScheduleItem } from '@/types/database';
+import { Transaction, ScheduleItem, Card, Bank } from '@/types/database';
 import { 
   formatDateISO, 
   getWeekdayNameJP, 
-  createJapanDate, 
-  formatJapaneseDate 
+  createJapanDate
 } from './dateUtils';
 import { calculateCardPaymentDate, calculateBankPaymentDate } from './paymentCalc';
 
@@ -61,7 +58,7 @@ export function transformToPaymentScheduleView(
     throw new ScheduleProcessingError(
       `Failed to transform schedule data for ${year}年${month}月`,
       'CALCULATION_ERROR',
-      { originalError: error, year, month }
+      { originalError: error instanceof Error ? error : new Error(String(error)) }
     );
   }
 }
@@ -103,8 +100,7 @@ export function groupTransactionsByScheduledDate(
         grouped.set(dateKey, {
           date: dateKey,
           dayOfWeek,
-          transactions: [],
-          cardInfo: undefined
+          transactions: []
         });
       }
 
@@ -158,12 +154,12 @@ export function createPaymentSummaries(
         date: dateKey,
         dayOfWeek: group.dayOfWeek,
         paymentName,
-        closingDay: group.cardInfo?.closingDay,
         paymentDay: group.cardInfo?.paymentDay || formatBankPaymentDay(),
         bankPayments,
         totalAmount,
         transactions: group.transactions,
-        sortKey
+        sortKey,
+        ...(group.cardInfo?.closingDay && { closingDay: group.cardInfo.closingDay })
       };
 
       summaries.push(summary);
@@ -286,7 +282,7 @@ export function determinePaymentName(transactions: Transaction[], cards: Card[])
 
   const firstTransaction = transactions[0];
   
-  if (firstTransaction.paymentType === 'card' && firstTransaction.cardId) {
+  if (firstTransaction && firstTransaction.paymentType === 'card' && firstTransaction.cardId) {
     const card = cards.find(c => c.id === firstTransaction.cardId);
     return card?.name || 'カード';
   }
@@ -389,19 +385,22 @@ export function transformScheduleItemsToPaymentView(
   month: number
 ): PaymentScheduleView {
   // Convert ScheduleItem to Transaction-like structure for processing
-  const transactions: Transaction[] = scheduleItems.map(item => ({
-    id: item.transactionId,
-    date: item.transactionDate || Date.now(),
-    storeName: item.storeName,
-    usage: item.usage,
-    amount: item.amount,
-    paymentType: item.paymentType,
-    cardId: item.cardId,
-    bankId: getBankIdFromName(item.bankName, banks),
-    scheduledPayDate: item.paymentDate || Date.now(),
-    isScheduleEditable: item.isScheduleEditable,
-    createdAt: Date.now()
-  }));
+  const transactions: Transaction[] = scheduleItems.map(item => {
+    const bankId = getBankIdFromName(item.bankName, banks);
+    return {
+      id: item.transactionId,
+      date: item.transactionDate || Date.now(),
+      amount: item.amount,
+      paymentType: item.paymentType,
+      scheduledPayDate: item.paymentDate || Date.now(),
+      createdAt: Date.now(),
+      ...(item.storeName && { storeName: item.storeName }),
+      ...(item.usage && { usage: item.usage }),
+      ...(item.cardId && { cardId: item.cardId }),
+      ...(bankId && { bankId }),
+      ...(item.isScheduleEditable && { isScheduleEditable: item.isScheduleEditable })
+    };
+  });
 
   return transformToPaymentScheduleView({
     transactions,
@@ -420,16 +419,3 @@ function getBankIdFromName(bankName: string, banks: Bank[]): string | undefined 
   return bank?.id;
 }
 
-/**
- * Creates ScheduleProcessingError with proper typing
- */
-export function createScheduleError(
-  message: string,
-  code: ScheduleProcessingError['code'],
-  details?: ScheduleProcessingError['details']
-): ScheduleProcessingError {
-  const error = new Error(message) as ScheduleProcessingError;
-  error.code = code;
-  error.details = details;
-  return error;
-}
