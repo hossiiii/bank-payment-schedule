@@ -23,6 +23,7 @@ import {
   parseAmount
 } from '@/lib/utils/validation';
 import { formatJapaneseDate } from '@/lib/utils/dateUtils';
+import { calculateCardPaymentDate, calculateBankPaymentDate } from '@/lib/utils/paymentCalc';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -52,13 +53,21 @@ export function TransactionModal({
     storeName: string;
     usage: string;
     amount: string;
+    paymentType: 'card' | 'bank';
     cardId: string;
+    bankId: string;
+    scheduledPayDate: string;
+    isScheduleEditable: boolean;
     memo: string;
   }>({
     storeName: '',
     usage: '',
     amount: '',
+    paymentType: 'card',
     cardId: '',
+    bankId: '',
+    scheduledPayDate: '',
+    isScheduleEditable: false,
     memo: ''
   });
 
@@ -78,22 +87,31 @@ export function TransactionModal({
           storeName: transaction.storeName || '',
           usage: transaction.usage || '',
           amount: transaction.amount.toString(),
-          cardId: transaction.cardId,
+          paymentType: transaction.paymentType || 'card',
+          cardId: transaction.cardId || '',
+          bankId: transaction.bankId || '',
+          scheduledPayDate: new Date(transaction.scheduledPayDate).toISOString().split('T')[0],
+          isScheduleEditable: transaction.isScheduleEditable || false,
           memo: transaction.memo || ''
         });
       } else {
         // Creating new transaction
+        const defaultPaymentType = cards.length > 0 ? 'card' : 'bank';
         setFormData({
           storeName: '',
           usage: '',
           amount: '',
+          paymentType: defaultPaymentType,
           cardId: cards.length === 1 ? cards[0].id : '',
+          bankId: banks.length === 1 ? banks[0].id : '',
+          scheduledPayDate: selectedDate.toISOString().split('T')[0],
+          isScheduleEditable: false,
           memo: ''
         });
       }
       setErrors({});
     }
-  }, [isOpen, transaction, cards]);
+  }, [isOpen, transaction, cards, banks, selectedDate]);
 
   // Get filtered cards based on selected bank (if any)
   const availableCards = cards.filter(card => 
@@ -102,7 +120,31 @@ export function TransactionModal({
 
   // Get selected card details
   const selectedCard = availableCards.find(card => card.id === formData.cardId);
-  const selectedBank = selectedCard ? banks.find(bank => bank.id === selectedCard.bankId) : null;
+  const selectedBank = formData.paymentType === 'bank' 
+    ? banks.find(bank => bank.id === formData.bankId)
+    : selectedCard ? banks.find(bank => bank.id === selectedCard.bankId) : null;
+
+  // Calculate scheduled payment date based on payment type
+  useEffect(() => {
+    if (!isOpen || formData.isScheduleEditable) return;
+
+    if (formData.paymentType === 'card' && formData.cardId) {
+      const card = cards.find(c => c.id === formData.cardId);
+      if (card) {
+        const result = calculateCardPaymentDate(selectedDate, card);
+        setFormData(prev => ({
+          ...prev,
+          scheduledPayDate: result.scheduledPayDate.toISOString().split('T')[0]
+        }));
+      }
+    } else if (formData.paymentType === 'bank') {
+      const result = calculateBankPaymentDate(selectedDate, true);
+      setFormData(prev => ({
+        ...prev,
+        scheduledPayDate: result.scheduledPayDate.toISOString().split('T')[0]
+      }));
+    }
+  }, [formData.paymentType, formData.cardId, selectedDate, cards, isOpen, formData.isScheduleEditable]);
 
   // Validation
   const validateForm = (): boolean => {
@@ -126,9 +168,17 @@ export function TransactionModal({
       newErrors.usage = usageValidation.errors[0];
     }
 
-    // Validate card selection
-    if (!formData.cardId) {
+    // Validate payment method selection
+    if (formData.paymentType === 'card' && !formData.cardId) {
       newErrors.cardId = 'カードを選択してください';
+    }
+    if (formData.paymentType === 'bank' && !formData.bankId) {
+      newErrors.bankId = '銀行を選択してください';
+    }
+
+    // Validate scheduled payment date
+    if (!formData.scheduledPayDate) {
+      newErrors.scheduledPayDate = '支払い予定日を選択してください';
     }
 
     setErrors(newErrors);
@@ -151,7 +201,11 @@ export function TransactionModal({
         storeName: formData.storeName.trim() || undefined,
         usage: formData.usage.trim() || undefined,
         amount: amountValidation.parsedAmount,
-        cardId: formData.cardId,
+        paymentType: formData.paymentType,
+        cardId: formData.paymentType === 'card' ? formData.cardId : undefined,
+        bankId: formData.paymentType === 'bank' ? formData.bankId : undefined,
+        scheduledPayDate: new Date(formData.scheduledPayDate).getTime(),
+        isScheduleEditable: formData.isScheduleEditable,
         memo: formData.memo.trim() || undefined
       };
 
@@ -231,47 +285,157 @@ export function TransactionModal({
             </div>
           </div>
 
-          {/* Card selection */}
+          {/* Payment type selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              カード *
+              支払い方法 *
             </label>
-            <select
-              value={formData.cardId}
-              onChange={handleInputChange('cardId')}
-              disabled={isFormDisabled}
-              className={cn(
-                'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                errors.cardId ? 'border-red-300' : 'border-gray-300',
-                isFormDisabled && 'opacity-50 cursor-not-allowed'
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="card"
+                  checked={formData.paymentType === 'card'}
+                  onChange={() => setFormData(prev => ({ ...prev, paymentType: 'card', isScheduleEditable: false }))}
+                  disabled={isFormDisabled}
+                  className="mr-2"
+                />
+                <span className="text-sm">カード払い</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="bank"
+                  checked={formData.paymentType === 'bank'}
+                  onChange={() => setFormData(prev => ({ ...prev, paymentType: 'bank', isScheduleEditable: false }))}
+                  disabled={isFormDisabled}
+                  className="mr-2"
+                />
+                <span className="text-sm">銀行引落</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Card selection (only for card payment) */}
+          {formData.paymentType === 'card' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                カード *
+              </label>
+              <select
+                value={formData.cardId}
+                onChange={handleInputChange('cardId')}
+                disabled={isFormDisabled}
+                className={cn(
+                  'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  errors.cardId ? 'border-red-300' : 'border-gray-300',
+                  isFormDisabled && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <option value="">カードを選択...</option>
+                {availableCards.map(card => {
+                  const bank = banks.find(b => b.id === card.bankId);
+                  return (
+                    <option key={card.id} value={card.id}>
+                      {bank?.name} - {card.name}
+                    </option>
+                  );
+                })}
+              </select>
+              {errors.cardId && (
+                <p className="mt-1 text-sm text-red-600">{errors.cardId}</p>
               )}
-            >
-              <option value="">カードを選択...</option>
-              {availableCards.map(card => {
-                const bank = banks.find(b => b.id === card.bankId);
-                return (
-                  <option key={card.id} value={card.id}>
-                    {bank?.name} - {card.name}
+            </div>
+          )}
+
+          {/* Bank selection (only for bank payment) */}
+          {formData.paymentType === 'bank' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                引落銀行 *
+              </label>
+              <select
+                value={formData.bankId}
+                onChange={handleInputChange('bankId')}
+                disabled={isFormDisabled}
+                className={cn(
+                  'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  errors.bankId ? 'border-red-300' : 'border-gray-300',
+                  isFormDisabled && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <option value="">銀行を選択...</option>
+                {banks.map(bank => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.name}
                   </option>
-                );
-              })}
-            </select>
-            {errors.cardId && (
-              <p className="mt-1 text-sm text-red-600">{errors.cardId}</p>
+                ))}
+              </select>
+              {errors.bankId && (
+                <p className="mt-1 text-sm text-red-600">{errors.bankId}</p>
+              )}
+            </div>
+          )}
+
+          {/* Scheduled payment date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              支払い予定日 *
+            </label>
+            <div className="flex items-start space-x-2">
+              <div className="flex-1">
+                <input
+                  type="date"
+                  value={formData.scheduledPayDate}
+                  onChange={handleInputChange('scheduledPayDate')}
+                  disabled={isFormDisabled || !formData.isScheduleEditable}
+                  className={cn(
+                    'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    errors.scheduledPayDate ? 'border-red-300' : 'border-gray-300',
+                    (isFormDisabled || !formData.isScheduleEditable) && 'opacity-50 cursor-not-allowed'
+                  )}
+                />
+                {errors.scheduledPayDate && (
+                  <p className="mt-1 text-sm text-red-600">{errors.scheduledPayDate}</p>
+                )}
+              </div>
+              <label className="flex items-center mt-2">
+                <input
+                  type="checkbox"
+                  checked={formData.isScheduleEditable}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isScheduleEditable: e.target.checked }))}
+                  disabled={isFormDisabled}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-600">手動で編集</span>
+              </label>
+            </div>
+            {!formData.isScheduleEditable && (
+              <p className="mt-1 text-xs text-gray-500">
+                {formData.paymentType === 'card' 
+                  ? 'カードの設定に基づいて自動計算されます'
+                  : '取引日と同日（休日の場合は翌営業日）に設定されます'}
+              </p>
             )}
           </div>
 
           {/* Payment preview */}
-          {selectedCard && (
+          {selectedBank && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
-                <strong>{selectedBank?.name} - {selectedCard.name}</strong>
+                <strong>{selectedBank.name}</strong>
+                {selectedCard && ` - ${selectedCard.name}`}
               </p>
+              {selectedCard && (
+                <p className="text-xs text-blue-600 mt-1">
+                  締切日: {selectedCard.closingDay} / 支払日: {selectedCard.paymentDay}
+                  {selectedCard.paymentMonthShift > 0 && 
+                    ` (${selectedCard.paymentMonthShift}ヶ月後)`
+                  }
+                </p>
+              )}
               <p className="text-xs text-blue-600 mt-1">
-                締切日: {selectedCard.closingDay} / 支払日: {selectedCard.paymentDay}
-                {selectedCard.paymentMonthShift > 0 && 
-                  ` (${selectedCard.paymentMonthShift}ヶ月後)`
-                }
+                支払い予定: {formatJapaneseDate(new Date(formData.scheduledPayDate))}
               </p>
             </div>
           )}

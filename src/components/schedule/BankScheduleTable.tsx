@@ -240,8 +240,23 @@ export function BankScheduleTable({
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-1">
                                 <span className="text-sm font-medium text-gray-900">
-                                  {transaction.cardName}
+                                  {transaction.paymentType === 'card' ? transaction.cardName : '銀行引落'}
                                 </span>
+                                {transaction.paymentType === 'card' && (
+                                  <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                                    カード
+                                  </span>
+                                )}
+                                {transaction.paymentType === 'bank' && (
+                                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                    引落
+                                  </span>
+                                )}
+                                {transaction.isScheduleEditable && (
+                                  <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
+                                    手動設定
+                                  </span>
+                                )}
                                 {transaction.paymentDate && (
                                   <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
                                     {formatJapaneseDate(new Date(transaction.paymentDate), { 

@@ -26,8 +26,11 @@ export interface Transaction {
   storeName?: string;          // 使用店舗（任意）
   usage?: string;              // 用途（任意）
   amount: number;              // 金額
-  cardId: string;              // カードID
+  paymentType: 'card' | 'bank'; // 支払いタイプ
+  cardId?: string;             // カードID（カード払いの場合）
+  bankId?: string;             // 銀行ID（銀行引落の場合）
   scheduledPayDate: number;    // 引落予定日（timestamp）
+  isScheduleEditable?: boolean; // スケジュール編集可能フラグ
   memo?: string;               // メモ（任意）
   createdAt: number;           // 登録日時
 }
@@ -58,19 +61,74 @@ export const TransactionSchema = z.object({
   storeName: z.string().max(100).optional(),
   usage: z.string().max(100).optional(),
   amount: z.number().positive(),
-  cardId: z.string().uuid(),
+  paymentType: z.enum(['card', 'bank']),
+  cardId: z.string().uuid().optional(),
+  bankId: z.string().uuid().optional(),
   scheduledPayDate: z.number(),
+  isScheduleEditable: z.boolean().optional(),
   memo: z.string().max(200).optional(),
   createdAt: z.number()
+}).refine(data => {
+  // カード払いの場合はcardIdが必須、銀行引落の場合はbankIdが必須
+  if (data.paymentType === 'card') {
+    return !!data.cardId;
+  } else {
+    return !!data.bankId;
+  }
+}, {
+  message: 'Payment type requires corresponding ID (cardId for card, bankId for bank)'
 });
 
 // Input schemas for forms (without id and createdAt)
 export const BankInputSchema = BankSchema.omit({ id: true, createdAt: true });
 export const CardInputSchema = CardSchema.omit({ id: true, createdAt: true });
-export const TransactionInputSchema = TransactionSchema.omit({ id: true, createdAt: true, scheduledPayDate: true });
+
+// Input schema for transactions (without id and createdAt, scheduledPayDate is optional for manual editing)
+export const TransactionInputSchema = z.object({
+  date: z.number(),
+  storeName: z.string().max(100).optional(),
+  usage: z.string().max(100).optional(),
+  amount: z.number().positive(),
+  paymentType: z.enum(['card', 'bank']),
+  cardId: z.string().uuid().optional(),
+  bankId: z.string().uuid().optional(),
+  scheduledPayDate: z.number().optional(),
+  isScheduleEditable: z.boolean().optional(),
+  memo: z.string().max(200).optional()
+}).refine(data => {
+  // カード払いの場合はcardIdが必須、銀行引落の場合はbankIdが必須
+  if (data.paymentType === 'card') {
+    return !!data.cardId;
+  } else {
+    return !!data.bankId;
+  }
+}, {
+  message: 'Payment type requires corresponding ID (cardId for card, bankId for bank)'
+});
 
 // Internal schema for transaction creation (includes calculated scheduledPayDate)
-export const TransactionCreateSchema = TransactionSchema.omit({ id: true });
+export const TransactionCreateSchema = z.object({
+  date: z.number(),
+  storeName: z.string().max(100).optional(),
+  usage: z.string().max(100).optional(),
+  amount: z.number().positive(),
+  paymentType: z.enum(['card', 'bank']),
+  cardId: z.string().uuid().optional(),
+  bankId: z.string().uuid().optional(),
+  scheduledPayDate: z.number(),
+  isScheduleEditable: z.boolean().optional(),
+  memo: z.string().max(200).optional(),
+  createdAt: z.number()
+}).refine(data => {
+  // カード払いの場合はcardIdが必須、銀行引落の場合はbankIdが必須
+  if (data.paymentType === 'card') {
+    return !!data.cardId;
+  } else {
+    return !!data.bankId;
+  }
+}, {
+  message: 'Payment type requires corresponding ID (cardId for card, bankId for bank)'
+});
 
 // Types derived from schemas
 export type BankInput = z.infer<typeof BankInputSchema>;
@@ -91,7 +149,7 @@ export interface TransactionFilters {
   dateRange?: DateRange;
   bankId?: string;
   cardId?: string;
-  methodType?: 'bank' | 'card';
+  paymentType?: 'bank' | 'card';
   minAmount?: number;
   maxAmount?: number;
 }
@@ -121,11 +179,12 @@ export interface ScheduleItem {
   storeName?: string;
   usage?: string;
   amount: number;
-  methodType: 'bank' | 'card';
+  paymentType: 'bank' | 'card';
   cardId?: string;
   cardName?: string;
   transactionDate?: number;
   paymentDate?: number;
+  isScheduleEditable?: boolean;
 }
 
 // Error types
