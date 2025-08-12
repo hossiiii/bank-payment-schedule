@@ -38,6 +38,17 @@ async function withRetry<T>(
     } catch (error) {
       lastError = error as Error;
       
+      // Don't retry validation errors - throw them immediately
+      if (error instanceof DatabaseOperationError || 
+          error instanceof ValidationError ||
+          lastError.name === 'ZodError' ||
+          lastError.message.includes('already exists') ||
+          lastError.message.includes('Bank with ID') ||
+          lastError.message.includes('Card with ID') ||
+          lastError.message.includes('transactions are still using')) {
+        throw error;
+      }
+      
       if (attempt === maxRetries) {
         throw new DatabaseOperationError(
           `Operation failed after ${maxRetries + 1} attempts`,

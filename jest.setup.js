@@ -35,6 +35,13 @@ Object.defineProperty(globalThis, 'crypto', {
   value: webcrypto,
 });
 
+// Polyfill for structuredClone (needed for fake-indexeddb)
+if (!globalThis.structuredClone) {
+  globalThis.structuredClone = (obj) => {
+    return JSON.parse(JSON.stringify(obj));
+  };
+}
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
