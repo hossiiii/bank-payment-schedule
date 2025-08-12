@@ -5,6 +5,9 @@ if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
 }
 import { Bank, Card, Transaction, DatabaseOperationError } from '@/types/database';
 import { SessionKeyManager } from './encryption';
+import { DatabaseMigrationError, DatabaseInitializationError } from './errors';
+import { VersionManager } from './versionManager';
+import { initializeMigrationErrorHandling, handleMigrationError } from './migrationHandler';
 
 // Database schema version (match current database version)
 const CURRENT_VERSION = 11;
@@ -85,6 +88,9 @@ export class PaymentDatabase extends Dexie {
   constructor() {
     super('PaymentScheduleDB');
     
+    // Initialize error handling
+    initializeMigrationErrorHandling(this);
+    
     // Define database schema with migration
     this.version(CURRENT_VERSION).stores({
       // Banks table - indexed by id, name, and createdAt for queries
@@ -95,9 +101,14 @@ export class PaymentDatabase extends Dexie {
       
       // Transactions table - indexed by key fields for efficient queries  
       transactions: 'id, date, paymentType, cardId, bankId, scheduledPayDate, createdAt'
-    }).upgrade(tx => {
-      // Migrate existing transactions to new schema
-      return tx.table('transactions').toCollection().modify(transaction => {
+    }).upgrade(async tx => {
+      try {
+        // Record migration attempt
+        const fromVersion = await VersionManager.getCurrentVersion();
+        console.log(`Migrating database from v${fromVersion} to v${CURRENT_VERSION}`);
+        
+        // Migrate existing transactions to new schema
+        await tx.table('transactions').toCollection().modify(transaction => {
         // Add default values for new fields if they don't exist
         if (!transaction.paymentType) {
           transaction.paymentType = 'card'; // Default to card for existing transactions
@@ -110,6 +121,28 @@ export class PaymentDatabase extends Dexie {
           transaction.isScheduleEditable = false; // Default to auto-calculated
         }
       });
+        
+        // Record successful migration
+        VersionManager.recordMigration(fromVersion || 0, CURRENT_VERSION, true);
+      } catch (error) {
+        // Handle migration error
+        const migrationError = new DatabaseMigrationError(
+          `Failed to migrate database to v${CURRENT_VERSION}`,
+          await VersionManager.getCurrentVersion() || 0,
+          CURRENT_VERSION,
+          error as Error
+        );
+        
+        // Record failed migration
+        VersionManager.recordMigration(
+          await VersionManager.getCurrentVersion() || 0,
+          CURRENT_VERSION,
+          false,
+          (error as Error).message
+        );
+        
+        throw migrationError;
+      }
     });
     
     // Set up hooks for validation and auto-generated fields
@@ -121,8 +154,22 @@ export class PaymentDatabase extends Dexie {
    */
   async initialize(): Promise<void> {
     try {
-      // Open the database without encryption for now
+      // Check if migration is needed
+      const currentDbVersion = await VersionManager.getCurrentVersion();
+      if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
+        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        
+        // Check if backup is recommended
+        if (VersionManager.isBackupRecommended()) {
+          console.warn('Backup recommended before migration');
+        }
+      }
+      
+      // Open the database (will trigger migration if needed)
       await this.open();
+      
+      // Record database info after successful opening
+      await VersionManager.getDatabaseInfo();
       
       // Check if this is the first initialization
       const bankCount = await this.banks.count();
@@ -131,10 +178,22 @@ export class PaymentDatabase extends Dexie {
       }
       
     } catch (error) {
-      throw new DatabaseOperationError(
-        'Failed to initialize database',
-        error
-      );
+      console.error('Failed to initialize database:', error);
+      
+      // Check if it's a migration error
+      if (error instanceof DatabaseMigrationError) {
+        // Let the migration handler deal with it
+        const recovered = await handleMigrationError(error, this);
+        if (!recovered) {
+          throw error;
+        }
+      } else {
+        // Other initialization errors
+        throw new DatabaseInitializationError(
+          'Failed to initialize database',
+          error as Error
+        );
+      }
     }
   }
   

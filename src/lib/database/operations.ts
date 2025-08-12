@@ -68,7 +68,9 @@ async function withRetry<T>(
  * Bank operations
  */
 export class BankOperations {
-  private db = getDatabase();
+  private get db() {
+    return getDatabase();
+  }
   
   /**
    * Creates a new bank
@@ -185,7 +187,9 @@ export class BankOperations {
  * Card operations
  */
 export class CardOperations {
-  private db = getDatabase();
+  private get db() {
+    return getDatabase();
+  }
   
   /**
    * Creates a new card
@@ -304,7 +308,9 @@ export class CardOperations {
  * Transaction operations
  */
 export class TransactionOperations {
-  private db = getDatabase();
+  private get db() {
+    return getDatabase();
+  }
   
   /**
    * Creates a new transaction
@@ -615,3 +621,6 @@ export class TransactionOperations {
 export const bankOperations = new BankOperations();
 export const cardOperations = new CardOperations();
 export const transactionOperations = new TransactionOperations();
+
+// Re-export backup utilities
+export { exportDatabase, importDatabase } from './backup';
