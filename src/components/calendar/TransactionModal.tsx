@@ -22,7 +22,7 @@ import {
   formatAmount,
   parseAmount
 } from '@/lib/utils/validation';
-import { formatJapaneseDate } from '@/lib/utils/dateUtils';
+import { formatJapaneseDate, formatDateISO } from '@/lib/utils/dateUtils';
 import { calculateCardPaymentDate, calculateBankPaymentDate } from '@/lib/utils/paymentCalc';
 
 export interface TransactionModalProps {
@@ -90,7 +90,7 @@ export function TransactionModal({
           paymentType: transaction.paymentType || 'card',
           cardId: transaction.cardId || '',
           bankId: transaction.bankId || '',
-          scheduledPayDate: new Date(transaction.scheduledPayDate).toISOString().split('T')[0],
+          scheduledPayDate: formatDateISO(new Date(transaction.scheduledPayDate)),
           isScheduleEditable: transaction.isScheduleEditable || false,
           memo: transaction.memo || ''
         });
@@ -104,7 +104,7 @@ export function TransactionModal({
           paymentType: defaultPaymentType,
           cardId: cards.length === 1 ? cards[0].id : '',
           bankId: banks.length === 1 ? banks[0].id : '',
-          scheduledPayDate: selectedDate.toISOString().split('T')[0],
+          scheduledPayDate: formatDateISO(selectedDate),
           isScheduleEditable: false,
           memo: ''
         });
@@ -134,14 +134,14 @@ export function TransactionModal({
         const result = calculateCardPaymentDate(selectedDate, card);
         setFormData(prev => ({
           ...prev,
-          scheduledPayDate: result.scheduledPayDate.toISOString().split('T')[0]
+          scheduledPayDate: formatDateISO(result.scheduledPayDate)
         }));
       }
     } else if (formData.paymentType === 'bank') {
       const result = calculateBankPaymentDate(selectedDate, true);
       setFormData(prev => ({
         ...prev,
-        scheduledPayDate: result.scheduledPayDate.toISOString().split('T')[0]
+        scheduledPayDate: formatDateISO(result.scheduledPayDate)
       }));
     }
   }, [formData.paymentType, formData.cardId, selectedDate, cards, isOpen, formData.isScheduleEditable]);
