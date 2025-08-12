@@ -668,6 +668,30 @@ export function useDatabaseStats() {
     }
   }, []);
   
+  const clearAllData = useCallback(async () => {
+    try {
+      setError(null);
+      
+      const db = getDatabase();
+      await db.clearAllData();
+      
+      // Clear all caches
+      dbCache.clear();
+      
+      // Update stats immediately
+      setStats({
+        banks: 0,
+        cards: 0,
+        transactions: 0,
+        totalSize: 0
+      });
+      
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to clear all data'));
+      throw err;
+    }
+  }, []);
+  
   useEffect(() => {
     fetchStats();
   }, []);
@@ -676,6 +700,7 @@ export function useDatabaseStats() {
     stats,
     isLoading,
     error,
-    refetch: fetchStats
+    refetch: fetchStats,
+    clearAllData
   };
 }

@@ -29,7 +29,8 @@ export default function SettingsPage() {
   const {
     stats,
     isLoading: statsLoading,
-    error: statsError
+    error: statsError,
+    clearAllData
   } = useDatabaseStats();
 
   // Navigation items
@@ -217,12 +218,17 @@ export default function SettingsPage() {
                 すべての銀行、カード、取引データを削除します。この操作は取り消せません。
               </p>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const confirmed = window.confirm(
                     'すべてのデータを削除しますか？この操作は取り消せません。'
                   );
                   if (confirmed) {
-                    console.log('Clear all data');
+                    try {
+                      await clearAllData();
+                      alert('すべてのデータが削除されました。');
+                    } catch (error) {
+                      alert('データの削除に失敗しました。エラー: ' + error);
+                    }
                   }
                 }}
                 className="flex items-center space-x-2 px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
