@@ -111,7 +111,7 @@ export class PaymentDatabase extends Dexie {
       const dexieEncrypted = await import('dexie-encrypted');
       const { applyEncryptionMiddleware, clearEncryptedTables } = dexieEncrypted;
       // Try different ways to access encrypt
-      const encrypt = dexieEncrypted.encrypt || (dexieEncrypted as any).default?.encrypt || dexieEncrypted;
+      const encrypt = (dexieEncrypted as any).encrypt || (dexieEncrypted as any).default?.encrypt || dexieEncrypted;
       console.log('Available exports:', Object.keys(dexieEncrypted));
       console.log('encrypt object:', encrypt);
       console.log('dexie-encrypted imported successfully');
@@ -135,7 +135,7 @@ export class PaymentDatabase extends Dexie {
       
       // Apply encryption middleware with configuration
       // The 4th parameter is onKeyChange callback - we'll use the clearEncryptedTables option
-      applyEncryptionMiddleware(this, rawKey, encryptionConfig, clearEncryptedTables);
+      applyEncryptionMiddleware(this, rawKey, encryptionConfig as any, clearEncryptedTables);
       
       this.encryptionMiddlewareApplied = true;
       console.log('Database encryption middleware applied successfully');

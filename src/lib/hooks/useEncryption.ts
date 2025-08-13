@@ -9,7 +9,6 @@ import {
   type EncryptedData 
 } from '@/lib/database/encryption';
 import { DatabaseOperationError } from '@/types/database';
-import { getDatabase } from '@/lib/database/schema';
 
 /**
  * Encryption hook state interfaces

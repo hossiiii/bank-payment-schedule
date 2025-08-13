@@ -117,7 +117,7 @@ export function getPlaintextFields(tableName: keyof typeof ENCRYPTION_CONFIG): r
 export function validateEncryptionConfig(): void {
   Object.entries(ENCRYPTION_CONFIG).forEach(([tableName, config]) => {
     const duplicates = config.encrypted.filter(field => 
-      config.plaintext.includes(field)
+      (config.plaintext as readonly string[]).includes(field)
     );
     
     if (duplicates.length > 0) {

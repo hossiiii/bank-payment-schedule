@@ -7,7 +7,7 @@ import { AutoLockWarning } from './AutoLockWarning';
 import { needsMigration } from '@/lib/database/migrationUtils';
 import { PasswordSetup } from './PasswordSetup';
 import { SessionLock } from './SessionLock';
-import { SessionStatus, SessionIndicator } from './SessionStatus';
+import { SessionIndicator } from './SessionStatus';
 import { MigrationDialog } from './MigrationDialog';
 
 interface EncryptionProviderProps {

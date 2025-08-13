@@ -14,7 +14,7 @@ export function PasswordSetup({ onComplete }: PasswordSetupProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { strength, errors: strengthErrors, suggestions } = usePasswordStrength(password);
+  const { strength, suggestions } = usePasswordStrength(password);
   
   const passwordsMatch = password === confirmPassword && password.length > 0;
   const canSubmit = passwordsMatch && strength !== 'weak' && !isLoading;
