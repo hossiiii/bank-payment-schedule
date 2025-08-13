@@ -10,69 +10,7 @@ import { generateDexieEncryptionConfig } from './encryptionConfig';
 // Version 12: Added encryption support with dexie-encrypted middleware
 const CURRENT_VERSION = 12;
 
-// Sample data for development and testing
-const SAMPLE_BANKS: Bank[] = [
-  {
-    id: 'bank-001',
-    name: 'SBIネット銀行',
-    memo: 'メイン銀行',
-    createdAt: Date.now()
-  },
-  {
-    id: 'bank-002',
-    name: 'りそな銀行',
-    memo: '給与振込先',
-    createdAt: Date.now()
-  },
-  {
-    id: 'bank-003',
-    name: 'イオン銀行',
-    memo: 'イオンカード引落',
-    createdAt: Date.now()
-  },
-  {
-    id: 'bank-004',
-    name: 'みずほ銀行',
-    memo: '住宅ローン',
-    createdAt: Date.now()
-  }
-];
-
-const SAMPLE_CARDS: Card[] = [
-  {
-    id: 'card-001',
-    name: 'イオンカード',
-    bankId: 'bank-003',
-    closingDay: '10',
-    paymentDay: '2',
-    paymentMonthShift: 1,
-    adjustWeekend: true,
-    memo: '食費・日用品用',
-    createdAt: Date.now()
-  },
-  {
-    id: 'card-002',
-    name: '三菱UFJニコス',
-    bankId: 'bank-001',
-    closingDay: '月末',
-    paymentDay: '10',
-    paymentMonthShift: 2,
-    adjustWeekend: true,
-    memo: '光熱費・通信費',
-    createdAt: Date.now()
-  },
-  {
-    id: 'card-003',
-    name: '楽天カード',
-    bankId: 'bank-001',
-    closingDay: '月末',
-    paymentDay: '27',
-    paymentMonthShift: 1,
-    adjustWeekend: true,
-    memo: 'ネットショッピング用',
-    createdAt: Date.now()
-  }
-];
+// Sample data removed - no automatic seeding
 
 /**
  * Main database class using Dexie with encryption middleware
@@ -232,11 +170,7 @@ export class PaymentDatabase extends Dexie {
       // Record database info after successful opening
       await VersionManager.getDatabaseInfo();
       
-      // Check if this is the first initialization
-      const bankCount = await this.banks.count();
-      if (bankCount === 0) {
-        await this.seedSampleData();
-      }
+      // Sample data seeding removed - database starts empty
       
     } catch (error) {
       console.error('Failed to initialize database:', error);
@@ -283,11 +217,7 @@ export class PaymentDatabase extends Dexie {
       // Record database info after successful opening
       await VersionManager.getDatabaseInfo();
       
-      // Check if this is the first initialization and seed sample data
-      const bankCount = await this.banks.count();
-      if (bankCount === 0) {
-        await this.seedSampleData();
-      }
+      // Sample data seeding removed - database starts empty
       
     } catch (error) {
       console.error('Failed to initialize encrypted database:', error);
@@ -344,11 +274,7 @@ export class PaymentDatabase extends Dexie {
       // Record database info after successful opening
       await VersionManager.getDatabaseInfo();
       
-      // Check if this is the first initialization and seed sample data
-      const bankCount = await this.banks.count();
-      if (bankCount === 0) {
-        await this.seedSampleData();
-      }
+      // Sample data seeding removed - database starts empty
       
     } catch (error) {
       console.error('Failed to initialize encrypted database:', error);
@@ -426,17 +352,11 @@ export class PaymentDatabase extends Dexie {
   }
   
   /**
-   * Seeds the database with sample data for development
+   * Sample data seeding removed
    */
   async seedSampleData(): Promise<void> {
-    try {
-      await this.transaction('rw', [this.banks, this.cards], async () => {
-        await this.banks.bulkAdd(SAMPLE_BANKS);
-        await this.cards.bulkAdd(SAMPLE_CARDS);
-      });
-    } catch (error) {
-      throw new DatabaseOperationError('Failed to seed sample data', error);
-    }
+    // No sample data - database starts empty
+    console.log('Sample data seeding disabled - database starts empty');
   }
   
   /**
