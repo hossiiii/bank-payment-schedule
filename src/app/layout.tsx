@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { EncryptionProvider } from '@/components/encryption';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -116,7 +117,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <div id="root">
-          {children}
+          <EncryptionProvider>
+            {children}
+          </EncryptionProvider>
         </div>
         
         {/* Service Worker Registration (will be handled by next-pwa) */}

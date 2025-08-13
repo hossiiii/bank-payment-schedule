@@ -261,11 +261,16 @@ export function CardMaster({
   const handleInputChange = (field: keyof CardFormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const value = e.target.type === 'checkbox' 
-      ? (e.target as HTMLInputElement).checked
-      : e.target.type === 'number'
-      ? parseInt(e.target.value) || 0
-      : e.target.value;
+    let value: any;
+    
+    if (e.target instanceof HTMLInputElement && e.target.type === 'checkbox') {
+      value = e.target.checked;
+    } else if (e.target instanceof HTMLInputElement && e.target.type === 'number') {
+      value = parseInt(e.target.value) || 0;
+    } else {
+      // For select elements and text inputs
+      value = e.target.value;
+    }
 
     setFormData(prev => ({ ...prev, [field]: value }));
     
