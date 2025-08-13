@@ -1,16 +1,14 @@
 import Dexie, { Table } from 'dexie';
-// Conditionally import dexie-encrypted (skip in test environment)
-if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
-  require('dexie-encrypted');
-}
 import { Bank, Card, Transaction, DatabaseOperationError } from '@/types/database';
 import { SessionKeyManager } from './encryption';
 import { DatabaseMigrationError, DatabaseInitializationError } from './errors';
 import { VersionManager } from './versionManager';
 import { initializeMigrationErrorHandling, handleMigrationError } from './migrationHandler';
+import { generateDexieEncryptionConfig } from './encryptionConfig';
 
 // Database schema version (match current database version)
-const CURRENT_VERSION = 11;
+// Version 12: Added encryption support with dexie-encrypted middleware
+const CURRENT_VERSION = 12;
 
 // Sample data for development and testing
 const SAMPLE_BANKS: Bank[] = [
@@ -85,6 +83,8 @@ export class PaymentDatabase extends Dexie {
   cards!: Table<Card, string>;
   transactions!: Table<Transaction, string>;
   
+  private encryptionMiddlewareApplied: boolean = false;
+  
   constructor() {
     super('PaymentScheduleDB');
     
@@ -150,6 +150,67 @@ export class PaymentDatabase extends Dexie {
   }
   
   /**
+   * Set up encryption middleware if session key is available
+   * Must be called BEFORE database.open() and AFTER encryption key is available
+   */
+  async setupEncryption(sessionManager?: SessionKeyManager): Promise<void> {
+    // Skip encryption in test environment
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+      console.log('Skipping encryption setup in test environment');
+      return;
+    }
+    
+    // Skip if already applied
+    if (this.encryptionMiddlewareApplied) {
+      console.log('Encryption middleware already applied, skipping');
+      return;
+    }
+    
+    try {
+      console.log('Starting encryption setup...');
+      
+      // Dynamically import dexie-encrypted to avoid issues in test environment
+      const dexieEncrypted = await import('dexie-encrypted');
+      const { applyEncryptionMiddleware, clearEncryptedTables } = dexieEncrypted;
+      // Try different ways to access encrypt
+      const encrypt = dexieEncrypted.encrypt || (dexieEncrypted as any).default?.encrypt || dexieEncrypted;
+      console.log('Available exports:', Object.keys(dexieEncrypted));
+      console.log('encrypt object:', encrypt);
+      console.log('dexie-encrypted imported successfully');
+      
+      // Use provided session manager or create new one
+      const manager = sessionManager || new SessionKeyManager();
+      console.log('Session manager:', sessionManager ? 'provided' : 'created new');
+      
+      if (!manager.hasActiveSession()) {
+        throw new Error('No active encryption session available');
+      }
+      console.log('Active session found');
+      
+      // Export raw key for dexie-encrypted
+      const rawKey = await manager.exportRawSessionKey();
+      console.log('Raw key exported, length:', rawKey.byteLength);
+      
+      // Generate encryption configuration dynamically
+      const encryptionConfig = generateDexieEncryptionConfig(encrypt);
+      console.log('Generated encryption config:', encryptionConfig);
+      
+      // Apply encryption middleware with configuration
+      // The 4th parameter is onKeyChange callback - we'll use the clearEncryptedTables option
+      applyEncryptionMiddleware(this, rawKey, encryptionConfig, clearEncryptedTables);
+      
+      this.encryptionMiddlewareApplied = true;
+      console.log('Database encryption middleware applied successfully');
+    } catch (error) {
+      console.error('Detailed encryption setup error:', error);
+      throw new DatabaseInitializationError(
+        'Failed to setup database encryption',
+        error as Error
+      );
+    }
+  }
+  
+  /**
    * Initializes the database (encryption temporarily disabled)
    */
   async initialize(): Promise<void> {
@@ -198,12 +259,115 @@ export class PaymentDatabase extends Dexie {
   }
   
   /**
-   * TODO: Re-implement with working encryption
+   * Initializes the database with encryption using existing session
+   */
+  async initializeWithEncryption(sessionManager?: SessionKeyManager): Promise<void> {
+    try {
+      // Check if migration is needed
+      const currentDbVersion = await VersionManager.getCurrentVersion();
+      if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
+        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        
+        // Check if backup is recommended
+        if (VersionManager.isBackupRecommended()) {
+          console.warn('Backup recommended before migration');
+        }
+      }
+      
+      // Setup encryption middleware before opening database
+      await this.setupEncryption(sessionManager);
+      
+      // Open the database (will trigger migration if needed)
+      await this.open();
+      
+      // Record database info after successful opening
+      await VersionManager.getDatabaseInfo();
+      
+      // Check if this is the first initialization and seed sample data
+      const bankCount = await this.banks.count();
+      if (bankCount === 0) {
+        await this.seedSampleData();
+      }
+      
+    } catch (error) {
+      console.error('Failed to initialize encrypted database:', error);
+      
+      // Check if it's a migration error
+      if (error instanceof DatabaseMigrationError) {
+        // Let the migration handler deal with it
+        const recovered = await handleMigrationError(error, this);
+        if (!recovered) {
+          throw error;
+        }
+      } else {
+        // Other initialization errors
+        throw new DatabaseInitializationError(
+          'Failed to initialize encrypted database',
+          error as Error
+        );
+      }
+    }
+  }
+  
+  /**
    * Initializes the database with encryption using the provided password
    */
-  async initializeWithPassword(_password: string): Promise<void> {
-    // Temporarily delegate to basic initialization
-    return this.initialize();
+  async initializeWithPassword(password: string): Promise<void> {
+    try {
+      // Import required functions
+      const { deriveKeyFromPassword } = await import('./encryption');
+      
+      // Check if migration is needed
+      const currentDbVersion = await VersionManager.getCurrentVersion();
+      if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
+        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        
+        // Check if backup is recommended
+        if (VersionManager.isBackupRecommended()) {
+          console.warn('Backup recommended before migration');
+        }
+      }
+      
+      // Derive key using existing SessionKeyManager
+      const sessionManager = new SessionKeyManager();
+      const derivedKey = await deriveKeyFromPassword(password);
+      
+      // Create session and apply encryption
+      await sessionManager.createSession(derivedKey);
+      
+      // Setup encryption middleware before opening database
+      await this.setupEncryption(sessionManager);
+      
+      // Open the database (will trigger migration if needed)
+      await this.open();
+      
+      // Record database info after successful opening
+      await VersionManager.getDatabaseInfo();
+      
+      // Check if this is the first initialization and seed sample data
+      const bankCount = await this.banks.count();
+      if (bankCount === 0) {
+        await this.seedSampleData();
+      }
+      
+    } catch (error) {
+      console.error('Failed to initialize encrypted database:', error);
+      
+      // Check if it's a migration error
+      if (error instanceof DatabaseMigrationError) {
+        // Let the migration handler deal with it
+        const recovered = await handleMigrationError(error, this);
+        if (!recovered) {
+          throw error;
+        }
+      } else {
+        // Other initialization errors
+        throw new DatabaseInitializationError(
+          'Failed to initialize encrypted database',
+          error as Error
+        );
+      }
+    }
   }
   
   /**
@@ -415,6 +579,15 @@ export function getDatabase(): PaymentDatabase {
 export async function initializeDatabase(password: string): Promise<PaymentDatabase> {
   const db = getDatabase();
   await db.initializeWithPassword(password);
+  return db;
+}
+
+/**
+ * Initializes the database with existing encryption session
+ */
+export async function initializeDatabaseWithEncryption(sessionManager?: SessionKeyManager): Promise<PaymentDatabase> {
+  const db = getDatabase();
+  await db.initializeWithEncryption(sessionManager);
   return db;
 }
 

@@ -64,7 +64,7 @@ export async function deriveKeyFromPassword(
         name: 'AES-GCM',
         length: 256
       },
-      false, // Not extractable for security
+      true, // Allow extraction for hashing and dexie-encrypted compatibility
       ['encrypt', 'decrypt']
     );
     
@@ -242,11 +242,13 @@ export class SessionKeyManager {
   private sessionKey: CryptoKey | null = null;
   private sessionExpiresAt: number | null = null;
   private storedKeyHash: string | null = null;
+  private storedSalt: string | null = null;
   
   constructor() {
-    // Try to load stored key hash from localStorage
+    // Try to load stored key hash and salt from localStorage
     if (typeof window !== 'undefined') {
       this.storedKeyHash = localStorage.getItem('encryption_key_hash');
+      this.storedSalt = localStorage.getItem('encryption_salt');
     }
   }
   
@@ -260,11 +262,14 @@ export class SessionKeyManager {
       const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
       const hashArray = new Uint8Array(hashBuffer);
       const hashBase64 = arrayBufferToBase64(hashArray);
+      const saltBase64 = arrayBufferToBase64(encryptionKey.salt);
       
       this.storedKeyHash = hashBase64;
+      this.storedSalt = saltBase64;
       
       if (typeof window !== 'undefined') {
         localStorage.setItem('encryption_key_hash', hashBase64);
+        localStorage.setItem('encryption_salt', saltBase64);
       }
     } catch (error) {
       throw new EncryptionError('Failed to store key hash', error);
@@ -293,10 +298,42 @@ export class SessionKeyManager {
   }
   
   /**
+   * Verify password against stored credentials and return derived key if valid
+   */
+  async verifyPassword(password: string): Promise<EncryptionKey | null> {
+    console.log('SessionKeyManager.verifyPassword called with password length:', password.length);
+    console.log('Stored key hash exists:', !!this.storedKeyHash);
+    console.log('Stored salt exists:', !!this.storedSalt);
+    
+    if (!this.storedKeyHash || !this.storedSalt) {
+      console.log('Missing stored credentials');
+      return null;
+    }
+    
+    try {
+      // Use stored salt to derive key from password
+      const storedSaltBytes = base64ToArrayBuffer(this.storedSalt);
+      console.log('Stored salt bytes length:', storedSaltBytes.byteLength);
+      
+      const derivedKey = await deriveKeyFromPassword(password, new Uint8Array(storedSaltBytes));
+      console.log('Key derived successfully');
+      
+      // Compare with stored hash
+      const isValid = await this.verifyKeyHash(derivedKey);
+      console.log('Key hash verification result:', isValid);
+      
+      return isValid ? derivedKey : null;
+    } catch (error) {
+      console.error('Error in verifyPassword:', error);
+      return null;
+    }
+  }
+  
+  /**
    * Check if there's a stored key hash
    */
   async hasStoredKey(): Promise<boolean> {
-    return this.storedKeyHash !== null;
+    return this.storedKeyHash !== null && this.storedSalt !== null;
   }
   
   /**
@@ -369,8 +406,34 @@ export class SessionKeyManager {
    */
   async clearStoredKey(): Promise<void> {
     this.storedKeyHash = null;
+    this.storedSalt = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('encryption_key_hash');
+      localStorage.removeItem('encryption_salt');
+    }
+  }
+  
+  /**
+   * Export the current session key as raw bytes for dexie-encrypted compatibility
+   * 
+   * @returns Raw key as Uint8Array for use with dexie-encrypted middleware
+   * @throws EncryptionError if no active session key is available
+   */
+  async exportRawSessionKey(): Promise<Uint8Array> {
+    const sessionKey = this.getSessionKey();
+    if (!sessionKey) {
+      throw new EncryptionError('No active session key available for export');
+    }
+    
+    try {
+      // Export CryptoKey as raw bytes for dexie-encrypted
+      const rawKeyBuffer = await crypto.subtle.exportKey('raw', sessionKey);
+      return new Uint8Array(rawKeyBuffer);
+    } catch (error) {
+      throw new EncryptionError(
+        'Failed to export session key as raw bytes',
+        error
+      );
     }
   }
 }

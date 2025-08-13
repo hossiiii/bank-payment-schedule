@@ -35,18 +35,32 @@ export interface Transaction {
   createdAt: number;           // 登録日時
 }
 
+// Helper function to validate IDs (supports both UUID and legacy sample IDs)
+const idValidation = z.string().min(1).refine(
+  (val) => {
+    // Accept standard UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Accept legacy sample IDs like "bank-001", "card-002", etc.
+    const legacyIdRegex = /^[a-z]+-[0-9]+$/i;
+    return uuidRegex.test(val) || legacyIdRegex.test(val);
+  },
+  {
+    message: "ID must be a valid UUID or legacy format (e.g., 'bank-001')"
+  }
+);
+
 // Zod validation schemas
 export const BankSchema = z.object({
-  id: z.string().uuid(),
+  id: idValidation,
   name: z.string().min(1).max(50),
   memo: z.string().max(200).optional(),
   createdAt: z.number()
 });
 
 export const CardSchema = z.object({
-  id: z.string().uuid(),
+  id: idValidation,
   name: z.string().min(1).max(50),
-  bankId: z.string().uuid(),
+  bankId: idValidation,
   closingDay: z.string(),
   paymentDay: z.string(),
   paymentMonthShift: z.number().int().min(0).max(2),
@@ -56,14 +70,14 @@ export const CardSchema = z.object({
 });
 
 export const TransactionSchema = z.object({
-  id: z.string().uuid(),
+  id: idValidation,
   date: z.number(),
   storeName: z.string().max(100).optional(),
   usage: z.string().max(100).optional(),
   amount: z.number().positive(),
   paymentType: z.enum(['card', 'bank']),
-  cardId: z.string().uuid().optional(),
-  bankId: z.string().uuid().optional(),
+  cardId: idValidation.optional(),
+  bankId: idValidation.optional(),
   scheduledPayDate: z.number(),
   isScheduleEditable: z.boolean().optional(),
   memo: z.string().max(200).optional(),
@@ -90,8 +104,8 @@ export const TransactionInputSchema = z.object({
   usage: z.string().max(100).optional(),
   amount: z.number().positive(),
   paymentType: z.enum(['card', 'bank']),
-  cardId: z.string().uuid().optional(),
-  bankId: z.string().uuid().optional(),
+  cardId: idValidation.optional(),
+  bankId: idValidation.optional(),
   scheduledPayDate: z.number().optional(),
   isScheduleEditable: z.boolean().optional(),
   memo: z.string().max(200).optional()
@@ -113,8 +127,8 @@ export const TransactionCreateSchema = z.object({
   usage: z.string().max(100).optional(),
   amount: z.number().positive(),
   paymentType: z.enum(['card', 'bank']),
-  cardId: z.string().uuid().optional(),
-  bankId: z.string().uuid().optional(),
+  cardId: idValidation.optional(),
+  bankId: idValidation.optional(),
   scheduledPayDate: z.number(),
   isScheduleEditable: z.boolean().optional(),
   memo: z.string().max(200).optional(),

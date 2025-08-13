@@ -9,6 +9,7 @@ import {
   type EncryptedData 
 } from '@/lib/database/encryption';
 import { DatabaseOperationError } from '@/types/database';
+import { getDatabase } from '@/lib/database/schema';
 
 /**
  * Encryption hook state interfaces
@@ -145,6 +146,20 @@ export function useEncryption() {
       await sessionManagerRef.current.storeKeyHash(derivedKey);
       const expiresAt = await sessionManagerRef.current.createSession(derivedKey);
       
+      // Close and re-initialize database with encryption
+      try {
+        const { closeDatabase, initializeDatabase } = await import('@/lib/database/schema');
+        await closeDatabase();
+        console.log('Closed existing database instance during setup');
+        
+        // Initialize encrypted database with password
+        await initializeDatabase(password);
+        console.log('Database encryption setup and initialized successfully during setup');
+      } catch (dbError) {
+        console.error('Failed to setup database encryption during initial setup:', dbError);
+        // Continue anyway - the session is valid
+      }
+      
       setState({
         isUnlocked: true,
         hasStoredKey: true,
@@ -173,17 +188,31 @@ export function useEncryption() {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Derive key and verify against stored hash
-      const derivedKey = await deriveKeyFromPassword(password);
-      const isValid = await sessionManagerRef.current.verifyKeyHash(derivedKey);
+      // Verify password and get derived key
+      const derivedKey = await sessionManagerRef.current.verifyPassword(password);
       
-      if (!isValid) {
+      if (!derivedKey) {
         throw new Error('Invalid password');
       }
       
       // Create new session
       const expiresAt = await sessionManagerRef.current.createSession(derivedKey);
       
+      // Close and re-initialize database with encryption
+      try {
+        const { closeDatabase, initializeDatabaseWithEncryption } = await import('@/lib/database/schema');
+        await closeDatabase();
+        console.log('Closed existing database instance');
+        
+        // Initialize encrypted database using existing session
+        await initializeDatabaseWithEncryption(sessionManagerRef.current);
+        console.log('Database encryption setup and initialized successfully');
+      } catch (dbError) {
+        console.error('Failed to setup database encryption:', dbError);
+        // Continue anyway - the session is valid
+      }
+      
+      console.log('Unlock successful, setting state to unlocked with expires at:', expiresAt);
       setState({
         isUnlocked: true,
         hasStoredKey: true,
@@ -192,6 +221,7 @@ export function useEncryption() {
         error: null
       });
       
+      console.log('State updated, setting up expiration timer');
       setupExpirationTimer(expiresAt);
     } catch (error) {
       setState(prev => ({
