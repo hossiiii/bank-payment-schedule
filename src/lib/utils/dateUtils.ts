@@ -1,4 +1,4 @@
-import { isHoliday } from '@holiday-jp/holiday_jp';
+import { isHoliday, holidays } from '@holiday-jp/holiday_jp';
 
 /**
  * Japanese calendar and date utilities
@@ -98,6 +98,15 @@ export function isWeekend(date: Date): boolean {
  */
 export function isJapaneseHoliday(date: Date): boolean {
   return isHoliday(date);
+}
+
+/**
+ * Gets the Japanese holiday name for a given date
+ */
+export function getJapaneseHolidayName(date: Date): string | null {
+  const dateKey = formatDateISO(date);
+  const holiday = holidays[dateKey as keyof typeof holidays];
+  return holiday?.name || null;
 }
 
 /**

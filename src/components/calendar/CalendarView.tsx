@@ -8,6 +8,7 @@ import {
   getMonthNameJP,
   formatDateISO,
   isSameDay,
+  getJapaneseHolidayName,
   type CalendarDay 
 } from '@/lib/utils/dateUtils';
 import { formatAmount } from '@/lib/utils/validation';
@@ -128,6 +129,7 @@ export function CalendarView({
           const daySchedule = scheduleByDate.get(dateKey) || [];
           const isSelected = selectedDate && isSameDay(calendarDay.date, selectedDate);
           const dayOfWeek = calendarDay.date.getDay();
+          const holidayName = calendarDay.isHoliday ? getJapaneseHolidayName(calendarDay.date) : null;
 
           return (
             <div
@@ -142,23 +144,25 @@ export function CalendarView({
                 calendarDay.isToday && 'bg-blue-100 font-semibold'
               )}
             >
-              {/* Date number */}
+              {/* Date number with holiday name */}
               <div className="flex items-center justify-between mb-1">
-                <span className={cn(
-                  'text-sm',
-                  !calendarDay.isCurrentMonth && 'text-gray-400',
-                  calendarDay.isToday && 'text-blue-700 font-bold',
-                  calendarDay.isWeekend && calendarDay.isCurrentMonth && !calendarDay.isToday && (
-                    dayOfWeek === 0 ? 'text-red-600' : 'text-blue-600'
-                  ),
-                  calendarDay.isHoliday && calendarDay.isCurrentMonth && 'text-red-600'
-                )}>
-                  {calendarDay.date.getDate()}
-                </span>
+                <div className="flex flex-col">
+                  <span className={cn(
+                    'text-sm leading-tight',
+                    !calendarDay.isCurrentMonth && 'text-gray-400',
+                    calendarDay.isToday && 'text-blue-700 font-bold',
+                    calendarDay.isWeekend && calendarDay.isCurrentMonth && !calendarDay.isToday && (
+                      dayOfWeek === 0 ? 'text-red-600' : 'text-blue-600'
+                    ),
+                    calendarDay.isHoliday && calendarDay.isCurrentMonth && 'text-red-600'
+                  )}>
+                    {calendarDay.date.getDate()}{holidayName && `（${holidayName}）`}
+                  </span>
+                </div>
                 
                 {/* Holiday indicator */}
                 {calendarDay.isHoliday && calendarDay.isCurrentMonth && (
-                  <span className="w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
                 )}
               </div>
 
