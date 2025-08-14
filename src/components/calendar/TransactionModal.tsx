@@ -21,7 +21,7 @@ import {
   validateUsage
 } from '@/lib/utils/validation';
 import { formatJapaneseDate, formatDateISO } from '@/lib/utils/dateUtils';
-import { calculateCardPaymentDate, calculateBankPaymentDate } from '@/lib/utils/paymentCalc';
+import { calculateCardPaymentDate } from '@/lib/utils/paymentCalc';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -103,7 +103,7 @@ export function TransactionModal({
           cardId: cards.length === 1 ? cards[0]?.id ?? '' : '',
           bankId: banks.length === 1 ? banks[0]?.id ?? '' : '',
           scheduledPayDate: formatDateISO(selectedDate),
-          isScheduleEditable: false,
+          isScheduleEditable: defaultPaymentType === 'bank',
           memo: ''
         });
       }
@@ -136,10 +136,10 @@ export function TransactionModal({
         }));
       }
     } else if (formData.paymentType === 'bank') {
-      const result = calculateBankPaymentDate(selectedDate, true);
+      // For bank payments, use the selected date directly (no automatic adjustment)
       setFormData(prev => ({
         ...prev,
-        scheduledPayDate: formatDateISO(result.scheduledPayDate)
+        scheduledPayDate: formatDateISO(selectedDate)
       }));
     }
   }, [formData.paymentType, formData.cardId, selectedDate, cards, isOpen, formData.isScheduleEditable]);
@@ -305,7 +305,7 @@ export function TransactionModal({
                   type="radio"
                   value="bank"
                   checked={formData.paymentType === 'bank'}
-                  onChange={() => setFormData(prev => ({ ...prev, paymentType: 'bank', isScheduleEditable: false }))}
+                  onChange={() => setFormData(prev => ({ ...prev, paymentType: 'bank', isScheduleEditable: true }))}
                   disabled={isFormDisabled}
                   className="mr-2"
                 />
@@ -412,7 +412,7 @@ export function TransactionModal({
               <p className="mt-1 text-xs text-gray-500">
                 {formData.paymentType === 'card' 
                   ? 'カードの設定に基づいて自動計算されます'
-                  : '取引日と同日（休日の場合は翌営業日）に設定されます'}
+                  : '銀行引落は手動で日付を入力してください'}
               </p>
             )}
           </div>

@@ -350,11 +350,8 @@ export class TransactionOperations {
         const paymentResult = calculateCardPaymentDate(transactionDate, card);
         scheduledPayDate = paymentResult.scheduledPayDate.getTime();
       } else {
-        // Bank payment - calculate based on transaction date
-        const { calculateBankPaymentDate } = await import('@/lib/utils/paymentCalc');
-        const transactionDate = new Date(validatedData.date);
-        const paymentResult = calculateBankPaymentDate(transactionDate, true);
-        scheduledPayDate = paymentResult.scheduledPayDate.getTime();
+        // Bank payment - use transaction date directly (no automatic adjustment)
+        scheduledPayDate = validatedData.date;
         
         // Validate bank exists
         const bank = await this.db.banks.get(validatedData.bankId!);
@@ -592,7 +589,7 @@ export class TransactionOperations {
       
       // Recalculate scheduled payment date if payment method changes and not manually edited
       if (updates.paymentType && !updates.isScheduleEditable) {
-        const { calculateCardPaymentDate, calculateBankPaymentDate } = await import('@/lib/utils/paymentCalc');
+        const { calculateCardPaymentDate } = await import('@/lib/utils/paymentCalc');
         const transactionDate = new Date(updates.date || existing.date);
         
         if (updates.paymentType === 'card' && updates.cardId) {
@@ -602,8 +599,8 @@ export class TransactionOperations {
             updates.scheduledPayDate = result.scheduledPayDate.getTime();
           }
         } else if (updates.paymentType === 'bank') {
-          const result = calculateBankPaymentDate(transactionDate, true);
-          updates.scheduledPayDate = result.scheduledPayDate.getTime();
+          // For bank payments, use transaction date directly (no automatic adjustment)
+          updates.scheduledPayDate = transactionDate.getTime();
         }
       }
       
