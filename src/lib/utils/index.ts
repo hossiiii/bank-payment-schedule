@@ -73,3 +73,8 @@ export {
   formatAmount,
   parseAmount
 } from './validation';
+
+// Card utilities
+export {
+  sortCardsByPaymentSchedule
+} from './cardUtils';

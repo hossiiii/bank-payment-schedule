@@ -10,6 +10,7 @@ import {
   ConfirmModal 
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { sortCardsByPaymentSchedule } from '@/lib/utils/cardUtils';
 import { Card, CardInput, Bank } from '@/types/database';
 import { 
   validateCardName, 
@@ -370,7 +371,7 @@ export function CardMaster({
           </div>
         ) : (
           <div className="space-y-4">
-            {cards.map(card => {
+            {sortCardsByPaymentSchedule(cards).map(card => {
               const analysis = analyzePaymentTiming(card);
               const validation = validateCardConfiguration(card);
 

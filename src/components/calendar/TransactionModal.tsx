@@ -9,6 +9,7 @@ import {
   Input 
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { sortCardsByPaymentSchedule } from '@/lib/utils/cardUtils';
 import { 
   Transaction, 
   TransactionInput, 
@@ -331,7 +332,7 @@ export function TransactionModal({
                 )}
               >
                 <option value="">カードを選択...</option>
-                {availableCards.map(card => {
+                {sortCardsByPaymentSchedule(availableCards).map(card => {
                   const bank = banks.find(b => b.id === card.bankId);
                   return (
                     <option key={card.id} value={card.id}>
