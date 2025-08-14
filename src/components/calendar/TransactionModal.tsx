@@ -418,7 +418,7 @@ export function TransactionModal({
           </div>
 
           {/* Payment preview */}
-          {selectedBank && (
+          {selectedBank && formData.paymentType === 'card' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
                 <strong>{selectedBank.name}</strong>

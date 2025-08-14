@@ -71,6 +71,7 @@ export function CalendarView({
         type: 'payment',
         bankName: item.bankName,
         cardName: item.cardName,
+        paymentType: item.paymentType,
         amount: item.amount,
         storeName: item.storeName
       });
@@ -197,10 +198,10 @@ export function CalendarView({
                       'bg-orange-100 text-orange-800',
                       'border border-orange-200'
                     )}
-                    title={`${item.cardName} - ${item.storeName || '支払い'}: ${formatAmount(item.amount)}`}
+                    title={`${item.paymentType === 'bank' ? '銀行引落' : item.cardName} - ${item.storeName || '支払い'}: ${formatAmount(item.amount)}`}
                   >
                     <div className="truncate">
-                      {item.cardName}
+                      {item.paymentType === 'bank' ? '銀行引落' : item.cardName}
                     </div>
                     <div className="text-xs font-medium">
                       {formatAmount(item.amount)}
