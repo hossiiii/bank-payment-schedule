@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getCurrentJapanDate, getMonthNameJP } from '@/lib/utils/dateUtils';
+import { useSwipeNavigation } from '@/lib/hooks/useSwipeNavigation';
 
 export interface MonthSelectorProps {
   year: number;
@@ -72,10 +73,23 @@ export function MonthSelector({
     }
   };
 
+  // Swipe navigation hook
+  const { handlers } = useSwipeNavigation({
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrevious,
+    threshold: 60,
+    velocityThreshold: 0.1,
+    preventDefaultTouchBehavior: true
+  });
+
   return (
     <div className={cn('relative', className)}>
       {/* Main selector */}
-      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+      <div 
+        className="flex items-center justify-between bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+        {...handlers}
+        style={{ touchAction: 'pan-y' }} // Allow vertical scrolling but intercept horizontal
+      >
         {/* Previous button */}
         <button
           onClick={handlePrevious}

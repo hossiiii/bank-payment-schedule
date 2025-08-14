@@ -210,6 +210,7 @@ export default function CalendarPage() {
                 cards={cards}
                 onDateClick={handleDateClick}
                 onTransactionClick={handleTransactionClick}
+                onMonthChange={handleMonthChange}
               />
             )}
           </>
