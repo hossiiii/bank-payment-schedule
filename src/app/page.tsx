@@ -206,6 +206,8 @@ export default function CalendarPage() {
                 month={currentDate.month}
                 transactions={transactions}
                 {...(schedule && { schedule })}
+                banks={banks}
+                cards={cards}
                 onDateClick={handleDateClick}
                 onTransactionClick={handleTransactionClick}
               />

@@ -12,13 +12,15 @@ import {
   type CalendarDay 
 } from '@/lib/utils/dateUtils';
 import { formatAmount } from '@/lib/utils/validation';
-import { Transaction, MonthlySchedule } from '@/types/database';
+import { Transaction, MonthlySchedule, Bank, Card } from '@/types/database';
 
 export interface CalendarViewProps {
   year: number;
   month: number;
   transactions: Transaction[];
   schedule?: MonthlySchedule;
+  banks: Bank[];
+  cards: Card[];
   onDateClick: (date: Date) => void;
   onTransactionClick: (transaction: Transaction) => void;
   className?: string;
@@ -29,6 +31,8 @@ export function CalendarView({
   month,
   transactions,
   schedule,
+  banks,
+  cards,
   onDateClick,
   onTransactionClick,
   className
@@ -90,6 +94,25 @@ export function CalendarView({
   const handleTransactionClick = (e: React.MouseEvent, transaction: Transaction) => {
     e.stopPropagation();
     onTransactionClick(transaction);
+  };
+
+  // Helper function to get payment method name
+  const getPaymentMethodName = (transaction: Transaction): string => {
+    if (transaction.paymentType === 'card' && transaction.cardId) {
+      const card = cards.find(c => c.id === transaction.cardId);
+      return card?.name || 'カード';
+    } else if (transaction.paymentType === 'bank' && transaction.bankId) {
+      const bank = banks.find(b => b.id === transaction.bankId);
+      return bank?.name || '銀行';
+    }
+    return transaction.paymentType === 'card' ? 'カード' : '銀行';
+  };
+
+  // Helper function to format transaction display name
+  const getTransactionDisplayName = (transaction: Transaction): string => {
+    const storeName = transaction.storeName || '取引';
+    const paymentMethod = getPaymentMethodName(transaction);
+    return `${storeName}（${paymentMethod}）`;
   };
 
   const weekdayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
@@ -178,10 +201,10 @@ export function CalendarView({
                       'bg-green-100 text-green-800 hover:bg-green-200',
                       'border border-green-200'
                     )}
-                    title={`${transaction.storeName || '取引'}: ${formatAmount(transaction.amount)}`}
+                    title={`${getTransactionDisplayName(transaction)}: ${formatAmount(transaction.amount)}`}
                   >
                     <div className="truncate">
-                      {transaction.storeName || '取引'}
+                      {getTransactionDisplayName(transaction)}
                     </div>
                     <div className="text-xs font-medium">
                       {formatAmount(transaction.amount)}
