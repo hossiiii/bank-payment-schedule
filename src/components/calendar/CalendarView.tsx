@@ -13,6 +13,7 @@ import {
 } from '@/lib/utils/dateUtils';
 import { formatAmount } from '@/lib/utils/validation';
 import { Transaction, MonthlySchedule, Bank, Card } from '@/types/database';
+import { useSwipeNavigation } from '@/lib/hooks/useSwipeNavigation';
 
 export interface CalendarViewProps {
   year: number;
@@ -23,6 +24,7 @@ export interface CalendarViewProps {
   cards: Card[];
   onDateClick: (date: Date) => void;
   onTransactionClick: (transaction: Transaction) => void;
+  onMonthChange?: (year: number, month: number) => void;
   className?: string;
 }
 
@@ -35,9 +37,40 @@ export function CalendarView({
   cards,
   onDateClick,
   onTransactionClick,
+  onMonthChange,
   className
 }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  
+  // Handle month navigation for swipe/drag
+  const handlePreviousMonth = () => {
+    if (onMonthChange) {
+      if (month === 1) {
+        onMonthChange(year - 1, 12);
+      } else {
+        onMonthChange(year, month - 1);
+      }
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (onMonthChange) {
+      if (month === 12) {
+        onMonthChange(year + 1, 1);
+      } else {
+        onMonthChange(year, month + 1);
+      }
+    }
+  };
+
+  // Swipe navigation hook
+  const { handlers } = useSwipeNavigation({
+    onSwipeLeft: handleNextMonth,
+    onSwipeRight: handlePreviousMonth,
+    threshold: 60,
+    velocityThreshold: 0.1,
+    preventDefaultTouchBehavior: true
+  });
   
   // Generate calendar grid
   const calendarGrid = useMemo(() => {
@@ -118,7 +151,11 @@ export function CalendarView({
   const weekdayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
 
   return (
-    <div className={cn('bg-white rounded-lg shadow-sm', className)}>
+    <div 
+      className={cn('bg-white rounded-lg shadow-sm', className)}
+      {...handlers}
+      style={{ touchAction: 'pan-y' }} // Allow vertical scrolling but intercept horizontal
+    >
       {/* Calendar Header */}
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">
