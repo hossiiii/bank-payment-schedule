@@ -508,66 +508,64 @@ export function CardMaster({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    締切日 *
-                  </label>
-                  <select
-                    value={formData.closingDay}
-                    onChange={handleInputChange('closingDay')}
-                    disabled={isFormDisabled}
-                    className={cn(
-                      'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      errors.closingDay ? 'border-red-300' : 'border-gray-300',
-                      isFormDisabled && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    <option value="">締切日を選択...</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day.toString()}>
-                        {day}日
-                      </option>
-                    ))}
-                    <option value="月末">月末</option>
-                  </select>
-                  {errors.closingDay && (
-                    <p className="mt-1 text-sm text-red-600">{errors.closingDay}</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  締切日 *
+                </label>
+                <select
+                  value={formData.closingDay}
+                  onChange={handleInputChange('closingDay')}
+                  disabled={isFormDisabled}
+                  className={cn(
+                    'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    errors.closingDay ? 'border-red-300' : 'border-gray-300',
+                    isFormDisabled && 'opacity-50 cursor-not-allowed'
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    1-31の数字か「月末」を選択
-                  </p>
-                </div>
+                >
+                  <option value="">締切日を選択...</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                    <option key={day} value={day.toString()}>
+                      {day}日
+                    </option>
+                  ))}
+                  <option value="月末">月末</option>
+                </select>
+                {errors.closingDay && (
+                  <p className="mt-1 text-sm text-red-600">{errors.closingDay}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  1-31の数字か「月末」を選択
+                </p>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    支払日 *
-                  </label>
-                  <select
-                    value={formData.paymentDay}
-                    onChange={handleInputChange('paymentDay')}
-                    disabled={isFormDisabled}
-                    className={cn(
-                      'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      errors.paymentDay ? 'border-red-300' : 'border-gray-300',
-                      isFormDisabled && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    <option value="">支払日を選択...</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day.toString()}>
-                        {day}日
-                      </option>
-                    ))}
-                    <option value="月末">月末</option>
-                  </select>
-                  {errors.paymentDay && (
-                    <p className="mt-1 text-sm text-red-600">{errors.paymentDay}</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  支払日 *
+                </label>
+                <select
+                  value={formData.paymentDay}
+                  onChange={handleInputChange('paymentDay')}
+                  disabled={isFormDisabled}
+                  className={cn(
+                    'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    errors.paymentDay ? 'border-red-300' : 'border-gray-300',
+                    isFormDisabled && 'opacity-50 cursor-not-allowed'
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    1-31の数字か「月末」を選択
-                  </p>
-                </div>
+                >
+                  <option value="">支払日を選択...</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                    <option key={day} value={day.toString()}>
+                      {day}日
+                    </option>
+                  ))}
+                  <option value="月末">月末</option>
+                </select>
+                {errors.paymentDay && (
+                  <p className="mt-1 text-sm text-red-600">{errors.paymentDay}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  1-31の数字か「月末」を選択
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
