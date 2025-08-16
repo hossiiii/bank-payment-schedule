@@ -57,7 +57,8 @@ export default function CalendarPage() {
   const { 
     schedule, 
     isLoading: scheduleLoading, 
-    error: scheduleError 
+    error: scheduleError,
+    refetch: refetchSchedule
   } = useMonthlySchedule(currentDate.year, currentDate.month);
 
   // Navigation items
@@ -143,8 +144,10 @@ export default function CalendarPage() {
       }
       
       if (transaction) {
-        // ScheduleViewModalを閉じてTransactionModalを開く
+        // ScheduleViewModalを一時的に閉じて空のダイアログ表示を防ぐ
         setIsScheduleViewModalOpen(false);
+        
+        // TransactionModalを開く
         setSelectedTransaction(transaction);
         setSelectedDate(new Date(transaction.date));
         setIsModalOpen(true);
@@ -201,6 +204,16 @@ export default function CalendarPage() {
         // Create new transaction
         await createTransaction(transactionInput);
       }
+      
+      // Refetch schedule data to reflect changes immediately
+      await refetchSchedule();
+      
+      // 保存後に全てのダイアログを閉じる
+      setIsModalOpen(false);
+      setSelectedTransaction(null);
+      setSelectedDate(null);
+      setIsScheduleViewModalOpen(false);
+      setSelectedScheduleItems([]);
     } catch (error) {
       console.error('Failed to save transaction:', error);
       throw error;
@@ -211,6 +224,16 @@ export default function CalendarPage() {
   const handleTransactionDelete = async (transactionId: string) => {
     try {
       await deleteTransaction(transactionId);
+      
+      // Refetch schedule data to reflect changes immediately
+      await refetchSchedule();
+      
+      // 削除後に全てのダイアログを閉じる
+      setIsModalOpen(false);
+      setSelectedTransaction(null);
+      setSelectedDate(null);
+      setIsScheduleViewModalOpen(false);
+      setSelectedScheduleItems([]);
     } catch (error) {
       console.error('Failed to delete transaction:', error);
       throw error;
@@ -220,8 +243,12 @@ export default function CalendarPage() {
   // Handle modal close
   const handleModalClose = () => {
     setIsModalOpen(false);
-    setSelectedDate(null);
     setSelectedTransaction(null);
+    setSelectedDate(null);
+    
+    // 全てのダイアログを閉じる - 引落予定ダイアログにも戻らない
+    setIsScheduleViewModalOpen(false);
+    setSelectedScheduleItems([]);
   };
 
   // Handle transaction view modal close
