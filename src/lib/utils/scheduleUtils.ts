@@ -304,7 +304,7 @@ export function formatPaymentDay(card: Card): string {
  * Formats bank payment day (typically same day or next business day)
  */
 export function formatBankPaymentDay(): string {
-  return '当日（営業日調整）';
+  return '手動入力';
 }
 
 /**

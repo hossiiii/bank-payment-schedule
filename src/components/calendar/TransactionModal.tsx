@@ -95,6 +95,11 @@ export function TransactionModal({
       } else {
         // Creating new transaction
         const defaultPaymentType = cards.length > 0 ? 'card' : 'bank';
+        // 銀行引落の場合、デフォルトで選択された日付を設定
+        const defaultScheduledDate = defaultPaymentType === 'bank' 
+          ? formatDateISO(selectedDate) 
+          : formatDateISO(selectedDate);
+        
         setFormData({
           storeName: '',
           usage: '',
@@ -102,7 +107,7 @@ export function TransactionModal({
           paymentType: defaultPaymentType,
           cardId: cards.length === 1 ? cards[0]?.id ?? '' : '',
           bankId: banks.length === 1 ? banks[0]?.id ?? '' : '',
-          scheduledPayDate: formatDateISO(selectedDate),
+          scheduledPayDate: defaultScheduledDate,
           isScheduleEditable: defaultPaymentType === 'bank',
           memo: ''
         });
@@ -305,7 +310,12 @@ export function TransactionModal({
                   type="radio"
                   value="bank"
                   checked={formData.paymentType === 'bank'}
-                  onChange={() => setFormData(prev => ({ ...prev, paymentType: 'bank', isScheduleEditable: true }))}
+                  onChange={() => setFormData(prev => ({ 
+                    ...prev, 
+                    paymentType: 'bank', 
+                    isScheduleEditable: true,
+                    scheduledPayDate: formatDateISO(selectedDate) // 銀行引落選択時に選択日を設定
+                  }))}
                   disabled={isFormDisabled}
                   className="mr-2"
                 />

@@ -47,7 +47,8 @@ export default function CalendarPage() {
     error: transactionsError,
     createTransaction,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
+    refetch: refetchTransactions
   } = useTransactions({
     dateRange: {
       start: new Date(currentDate.year, currentDate.month - 1, 1).getTime(),
@@ -205,8 +206,11 @@ export default function CalendarPage() {
         await createTransaction(transactionInput);
       }
       
-      // Refetch schedule data to reflect changes immediately
-      await refetchSchedule();
+      // Refetch both transaction and schedule data to reflect changes immediately
+      await Promise.all([
+        refetchTransactions(),
+        refetchSchedule()
+      ]);
       
       // 保存後に全てのダイアログを閉じる
       setIsModalOpen(false);
@@ -225,8 +229,11 @@ export default function CalendarPage() {
     try {
       await deleteTransaction(transactionId);
       
-      // Refetch schedule data to reflect changes immediately
-      await refetchSchedule();
+      // Refetch both transaction and schedule data to reflect changes immediately
+      await Promise.all([
+        refetchTransactions(),
+        refetchSchedule()
+      ]);
       
       // 削除後に全てのダイアログを閉じる
       setIsModalOpen(false);
