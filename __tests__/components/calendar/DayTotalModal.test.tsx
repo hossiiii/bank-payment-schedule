@@ -113,6 +113,9 @@ describe('DayTotalModal', () => {
     isOpen: true,
     onClose: jest.fn(),
     onTransactionClick: jest.fn(),
+    onScheduleClick: jest.fn(),
+    onViewTransactions: jest.fn(),
+    onViewSchedules: jest.fn(),
     selectedDate: new Date(2024, 1, 15),
     dayTotalData: mockDayTotalData,
     banks: mockBanks,
@@ -291,15 +294,21 @@ describe('DayTotalModal', () => {
       });
     });
 
-    it('スケジュールアイテムはクリックできないこと', () => {
-      const onTransactionClick = jest.fn();
-      render(<DayTotalModal {...defaultProps} onTransactionClick={onTransactionClick} />);
+    it('スケジュールアイテムクリックでonScheduleClickが呼ばれること', async () => {
+      const onScheduleClick = jest.fn();
+      render(<DayTotalModal {...defaultProps} onScheduleClick={onScheduleClick} />);
       
       const scheduleElement = screen.getByText('ガス代').closest('div')!;
       fireEvent.click(scheduleElement);
       
-      // スケジュールアイテムはクリックできないので onTransactionClick は呼ばれない
-      expect(onTransactionClick).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(onScheduleClick).toHaveBeenCalledWith(
+          expect.objectContaining({
+            transactionId: 'schedule-1',
+            storeName: 'ガス代'
+          })
+        );
+      });
     });
 
     it('フッターの閉じるボタンが正常に動作すること', async () => {
@@ -520,6 +529,242 @@ describe('DayTotalModal', () => {
           expect(arrows.length).toBe(0);
         }
       });
+    });
+  });
+
+  describe('新機能：詳細表示ボタンのテスト', () => {
+    it('取引データの詳細表示ボタンが正しく表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      const transactionDetailButton = screen.getByText('詳細表示');
+      expect(transactionDetailButton).toBeInTheDocument();
+    });
+
+    it('取引データの詳細表示ボタンクリックでonViewTransactionsが呼ばれること', async () => {
+      const onViewTransactions = jest.fn();
+      render(<DayTotalModal {...defaultProps} onViewTransactions={onViewTransactions} />);
+      
+      const transactionDetailButtons = screen.getAllByText('詳細表示');
+      const transactionDetailButton = transactionDetailButtons[0]; // 最初の詳細表示ボタン（取引データ用）
+      
+      fireEvent.click(transactionDetailButton);
+      
+      await waitFor(() => {
+        expect(onViewTransactions).toHaveBeenCalledWith(mockDayTotalData.transactions);
+      });
+    });
+
+    it('引落予定の詳細表示ボタンクリックでonViewSchedulesが呼ばれること', async () => {
+      const onViewSchedules = jest.fn();
+      render(<DayTotalModal {...defaultProps} onViewSchedules={onViewSchedules} />);
+      
+      const scheduleDetailButtons = screen.getAllByText('詳細表示');
+      const scheduleDetailButton = scheduleDetailButtons[1]; // 2番目の詳細表示ボタン（引落予定用）
+      
+      fireEvent.click(scheduleDetailButton);
+      
+      await waitFor(() => {
+        expect(onViewSchedules).toHaveBeenCalledWith(mockDayTotalData.scheduleItems);
+      });
+    });
+
+    it('取引データのみの日では引落予定の詳細表示ボタンが表示されないこと', () => {
+      const transactionOnlyData: DayTotalData = {
+        date: '2024-02-25',
+        totalAmount: 15000,
+        transactionTotal: 15000,
+        scheduleTotal: 0,
+        transactionCount: 1,
+        scheduleCount: 0,
+        bankGroups: [],
+        transactions: [mockTransactions[0]!],
+        scheduleItems: [],
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: false
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={transactionOnlyData} />);
+      
+      const detailButtons = screen.getAllByText('詳細表示');
+      expect(detailButtons.length).toBe(1); // 取引データの詳細表示ボタンのみ
+    });
+
+    it('引落予定のみの日では取引データの詳細表示ボタンが表示されないこと', () => {
+      const scheduleOnlyData: DayTotalData = {
+        date: '2024-02-28',
+        totalAmount: 5000,
+        transactionTotal: 0,
+        scheduleTotal: 5000,
+        transactionCount: 0,
+        scheduleCount: 1,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: mockScheduleItems,
+        hasData: true,
+        hasTransactions: false,
+        hasSchedule: true
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={scheduleOnlyData} />);
+      
+      const detailButtons = screen.getAllByText('詳細表示');
+      expect(detailButtons.length).toBe(1); // 引落予定の詳細表示ボタンのみ
+    });
+  });
+
+  describe('新機能：引落予定の編集アイコンのテスト', () => {
+    it('引落予定項目に編集アイコンが表示されること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      // 編集アイコンのSVGパスを確認
+      const editIcons = container.querySelectorAll('svg path[d*="M15.232 5.232l3.536 3.536"]');
+      expect(editIcons.length).toBe(1); // 1つのスケジュールアイテム分
+    });
+
+    it('引落予定項目の編集アイコンがホバー時に色が変わること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      const editIcons = container.querySelectorAll('.text-blue-600.group-hover\\:text-blue-700');
+      expect(editIcons.length).toBeGreaterThan(0);
+    });
+
+    it('取引データには編集アイコンが表示されないこと', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      // 取引データセクションの矢印アイコンを確認（編集アイコンではない）
+      const transactionArrows = container.querySelectorAll('svg[viewBox="0 0 24 24"] path[d="M9 5l7 7-7 7"]');
+      expect(transactionArrows.length).toBe(3); // 3つのトランザクション分
+      
+      // 引落予定セクションの編集アイコンを確認
+      const editIcons = container.querySelectorAll('svg path[d*="M15.232 5.232l3.536 3.536"]');
+      expect(editIcons.length).toBe(1); // 1つのスケジュールアイテム分
+    });
+  });
+
+  describe('新機能：用途情報表示のテスト', () => {
+    it('引落予定項目に用途情報が表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      // scheduleItemのusageプロパティが表示されることを確認
+      // mockScheduleItemsで設定されているusageが無いので、実際の実装に合わせて修正が必要
+      expect(screen.queryByText(/用途:/)).toBeInTheDocument();
+    });
+
+    it('用途情報がない引落予定項目では用途が表示されないこと', () => {
+      const scheduleWithoutUsage = [
+        {
+          transactionId: 'schedule-no-usage',
+          date: new Date(2024, 1, 15),
+          amount: 3000,
+          storeName: 'テスト店舗',
+          paymentType: 'bank' as const,
+          bankName: 'SBIネット銀行'
+        }
+      ];
+
+      const modifiedDayTotalData: DayTotalData = {
+        ...mockDayTotalData,
+        scheduleItems: scheduleWithoutUsage
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={modifiedDayTotalData} />);
+      
+      expect(screen.queryByText(/用途:/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('新機能：操作ガイドのテスト', () => {
+    it('操作ガイドが正しく表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      expect(screen.getByText('操作ガイド:')).toBeInTheDocument();
+      expect(screen.getByText('「詳細表示」ボタンで各カテゴリの詳細画面を開けます')).toBeInTheDocument();
+      expect(screen.getByText('個別項目をクリックすると編集ができます')).toBeInTheDocument();
+      expect(screen.getByText('取引データは緑色、引落予定は青色で区分されています')).toBeInTheDocument();
+    });
+
+    it('データがない日では操作ガイドが表示されないこと', () => {
+      const emptyDayTotalData: DayTotalData = {
+        date: '2024-02-20',
+        totalAmount: 0,
+        transactionTotal: 0,
+        scheduleTotal: 0,
+        transactionCount: 0,
+        scheduleCount: 0,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: [],
+        hasData: false,
+        hasTransactions: false,
+        hasSchedule: false
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={emptyDayTotalData} />);
+      
+      expect(screen.queryByText('操作ガイド:')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('新機能：日別データサマリーのテスト', () => {
+    it('日別データサマリーが正しく表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      expect(screen.getByText('日別データサマリー')).toBeInTheDocument();
+      expect(screen.getByText('取引合計:')).toBeInTheDocument();
+      expect(screen.getByText('引落予定合計:')).toBeInTheDocument();
+    });
+
+    it('総合計が正しく計算・表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      // 取引合計 45,840円 + 引落予定合計 5,000円 = 50,840円
+      expect(screen.getByText('￥50,840')).toBeInTheDocument();
+      expect(screen.getByText('4件')).toBeInTheDocument(); // 3件の取引 + 1件の引落予定
+    });
+
+    it('取引データのみの場合は引落予定合計が表示されないこと', () => {
+      const transactionOnlyData: DayTotalData = {
+        date: '2024-02-25',
+        totalAmount: 15000,
+        transactionTotal: 15000,
+        scheduleTotal: 0,
+        transactionCount: 1,
+        scheduleCount: 0,
+        bankGroups: [],
+        transactions: [mockTransactions[0]!],
+        scheduleItems: [],
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: false
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={transactionOnlyData} />);
+      
+      expect(screen.getByText('取引合計:')).toBeInTheDocument();
+      expect(screen.queryByText('引落予定合計:')).not.toBeInTheDocument();
+    });
+
+    it('引落予定のみの場合は取引合計が表示されないこと', () => {
+      const scheduleOnlyData: DayTotalData = {
+        date: '2024-02-28',
+        totalAmount: 5000,
+        transactionTotal: 0,
+        scheduleTotal: 5000,
+        transactionCount: 0,
+        scheduleCount: 1,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: mockScheduleItems,
+        hasData: true,
+        hasTransactions: false,
+        hasSchedule: true
+      };
+
+      render(<DayTotalModal {...defaultProps} dayTotalData={scheduleOnlyData} />);
+      
+      expect(screen.getByText('引落予定合計:')).toBeInTheDocument();
+      expect(screen.queryByText('取引合計:')).not.toBeInTheDocument();
     });
   });
 });

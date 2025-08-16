@@ -507,9 +507,12 @@ export class TransactionOperations {
           bankName,
           amount: tx.amount,
           paymentType: tx.paymentType,
+          transactionDate: tx.date,
+          paymentDate: tx.scheduledPayDate,
           ...(tx.storeName && { storeName: tx.storeName }),
           ...(tx.usage && { usage: tx.usage }),
           ...(cardName && { cardName }),
+          ...(tx.cardId && { cardId: tx.cardId }),
           ...(tx.isScheduleEditable && { isScheduleEditable: tx.isScheduleEditable })
         };
       });

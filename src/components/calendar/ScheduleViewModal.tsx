@@ -6,10 +6,10 @@ import { formatJapaneseDate } from '@/lib/utils/dateUtils';
 import { ScheduleItem, Bank, Card } from '@/types/database';
 import { BaseModal, BaseModalFooter } from './BaseModal';
 
-export interface ScheduleModalProps {
+export interface ScheduleViewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTransactionClick?: (transactionId: string) => void;
+  onTransactionClick: (transactionId: string) => void;
   selectedDate: Date;
   scheduleItems: ScheduleItem[];
   banks: Bank[];
@@ -58,25 +58,96 @@ function groupSchedulesByBank(
     let bankName: string;
     let displayName: string;
     
+    // デバッグ情報を出力（開発環境のみ）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Processing scheduleItem:', {
+        transactionId: scheduleItem.transactionId,
+        paymentType: scheduleItem.paymentType,
+        cardId: scheduleItem.cardId,
+        cardName: scheduleItem.cardName,
+        bankName: scheduleItem.bankName
+      });
+    }
+    
     if (scheduleItem.paymentType === 'card' && scheduleItem.cardId) {
+      // カードID でカードを検索
       const card = cardMap.get(scheduleItem.cardId);
-      if (!card) return;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Card search result:', {
+          cardId: scheduleItem.cardId,
+          cardFound: !!card,
+          availableCardIds: Array.from(cardMap.keys()),
+          cardMapSize: cardMap.size
+        });
+      }
       
-      bankId = card.bankId;
-      const bank = bankMap.get(bankId);
-      if (!bank) return;
-      
-      bankName = bank.name;
-      displayName = scheduleItem.cardName || card.name;
+      if (!card) {
+        // カードが見つからない場合、カード名での検索を試行
+        const cardByName = cards.find(c => c.name === scheduleItem.cardName);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fallback card search by name:', {
+            cardName: scheduleItem.cardName,
+            cardFoundByName: !!cardByName,
+            availableCardNames: cards.map(c => c.name)
+          });
+        }
+        
+        if (!cardByName) {
+          console.warn('Card not found by ID or name for scheduleItem:', scheduleItem.transactionId);
+          return;
+        }
+        
+        // カード名で見つかった場合はそれを使用
+        bankId = cardByName.bankId;
+        const bank = bankMap.get(bankId);
+        if (!bank) {
+          console.warn('Bank not found for card:', cardByName.name);
+          return;
+        }
+        
+        bankName = bank.name;
+        displayName = scheduleItem.cardName || cardByName.name;
+      } else {
+        bankId = card.bankId;
+        const bank = bankMap.get(bankId);
+        if (!bank) {
+          console.warn('Bank not found for card:', card.name);
+          return;
+        }
+        
+        bankName = bank.name;
+        displayName = scheduleItem.cardName || card.name;
+      }
     } else if (scheduleItem.paymentType === 'bank') {
-      // スケジュールアイテムの場合、bankNameから銀行を特定
-      const bank = banks.find(b => b.name === scheduleItem.bankName);
-      if (!bank) return;
+      // 銀行名から銀行を特定（完全一致と部分一致両方を試行）
+      let bank = banks.find(b => b.name === scheduleItem.bankName);
+      
+      if (!bank) {
+        // 部分一致での検索を試行
+        bank = banks.find(b => 
+          b.name.includes(scheduleItem.bankName) || 
+          scheduleItem.bankName.includes(b.name)
+        );
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Bank search result:', {
+          bankName: scheduleItem.bankName,
+          bankFound: !!bank,
+          availableBankNames: banks.map(b => b.name)
+        });
+      }
+      
+      if (!bank) {
+        console.warn('Bank not found for scheduleItem:', scheduleItem.transactionId);
+        return;
+      }
       
       bankId = bank.id;
       bankName = bank.name;
-      displayName = '自動引き落とし';
+      displayName = '自動銀行振替';
     } else {
+      console.warn('Unknown payment type for scheduleItem:', scheduleItem.transactionId);
       return;
     }
     
@@ -110,15 +181,15 @@ function groupSchedulesByBank(
 }
 
 /**
- * ScheduleModal - 引落予定専用モーダル
+ * ScheduleViewModal - 引落予定専用モーダル
  * 
  * 特徴:
  * - 青色テーマ
- * - 表示のみ（編集不可）
+ * - 編集可能（引落予定クリックで編集モーダル表示）
  * - 銀行別グループ化表示
- * - 店舗情報表示
+ * - 店舗情報、用途、メモ表示
  */
-export function ScheduleModal({
+export function ScheduleViewModal({
   isOpen,
   onClose,
   onTransactionClick,
@@ -127,21 +198,41 @@ export function ScheduleModal({
   banks,
   cards,
   className
-}: ScheduleModalProps) {
+}: ScheduleViewModalProps) {
   if (!isOpen) return null;
 
   // 引落予定データを銀行別にグループ化
   const bankGroups = groupSchedulesByBank(scheduleItems, banks, cards);
   
+  // 詳細デバッグログ（開発環境のみ）
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ScheduleViewModal Debug:', {
+      scheduleItemsCount: scheduleItems.length,
+      bankGroupsCount: bankGroups.length,
+      scheduleItems: scheduleItems.map(item => ({
+        id: item.transactionId,
+        paymentType: item.paymentType,
+        cardId: item.cardId,
+        cardIdType: typeof item.cardId,
+        cardName: item.cardName,
+        bankName: item.bankName,
+        amount: item.amount
+      })),
+      banks: banks.map(bank => ({ id: bank.id, idType: typeof bank.id, name: bank.name })),
+      cards: cards.map(card => ({ id: card.id, idType: typeof card.id, name: card.name, bankId: card.bankId })),
+      banksCount: banks.length,
+      cardsCount: cards.length
+    });
+  }
+  
   // 総合計算
-  const totalAmount = scheduleItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount = scheduleItems.reduce((sum, scheduleItem) => sum + scheduleItem.amount, 0);
   const totalCount = scheduleItems.length;
 
-  // Handle schedule click for editing
   const handleScheduleClick = (scheduleItem: ScheduleItem) => {
-    if (onTransactionClick) {
-      onTransactionClick(scheduleItem.transactionId);
-    }
+    // 引落予定の編集アイコンをクリックした時は、元の取引データを編集する
+    onTransactionClick(scheduleItem.transactionId);
+    // モーダルは開いたままにして、TransactionModalを上に表示
   };
 
   return (
@@ -210,7 +301,7 @@ export function ScheduleModal({
             {bankGroups.map(bankGroup => (
               <div
                 key={bankGroup.bankId}
-                className="bg-white border border-blue-200 rounded-lg overflow-hidden shadow-sm"
+                className="bg-white border border-blue-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* 銀行セクションヘッダー */}
                 <div className="px-4 py-3 bg-blue-100 border-b border-blue-200">
@@ -234,15 +325,13 @@ export function ScheduleModal({
                   {bankGroup.items.map(item => (
                     <div
                       key={item.id}
-                      onClick={() => onTransactionClick && handleScheduleClick(item.scheduleItem)}
-                      className={`px-4 py-3 flex items-center justify-between bg-white transition-colors ${
-                        onTransactionClick ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-blue-25'
-                      }`}
+                      onClick={() => handleScheduleClick(item.scheduleItem)}
+                      className="px-4 py-3 flex items-center justify-between hover:bg-blue-50 cursor-pointer transition-colors group"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-3">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
+                            <div className="flex items-center space-x-2">
                               <span className="font-medium text-gray-900">
                                 {item.cardName}
                               </span>
@@ -254,21 +343,7 @@ export function ScheduleModal({
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                 予定
                               </span>
-                            </div>
-                            
-                            {/* 店舗情報と用途を表示 */}
-                            <div className="space-y-1">
-                              {item.storeName && (
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">店舗:</span> {item.storeName}
-                                </p>
-                              )}
-                              {item.usage && (
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">用途:</span> {item.usage}
-                                </p>
-                              )}
-                            </div>
+                            </div>                            
                           </div>
                         </div>
                       </div>
@@ -276,17 +351,14 @@ export function ScheduleModal({
                         <span className="font-bold text-gray-900">
                           {formatAmount(item.amount)}
                         </span>
-                        {/* 編集可能な場合は編集アイコンを表示 */}
-                        {onTransactionClick && (
-                          <svg 
-                            className="w-4 h-4 text-blue-600 group-hover:text-blue-700 transition-colors" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        )}
+                        <svg 
+                          className="w-4 h-4 text-blue-600 group-hover:text-blue-700 transition-colors" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </div>
                     </div>
                   ))}
@@ -296,7 +368,7 @@ export function ScheduleModal({
           </div>
         )}
 
-        {/* 情報ガイド */}
+        {/* 操作ガイド */}
         {bankGroups.length > 0 && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="flex items-start space-x-2">
@@ -304,16 +376,11 @@ export function ScheduleModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="text-sm text-gray-600">
-                <p className="font-medium mb-1">引落予定について:</p>
+                <p className="font-medium mb-1">操作ガイド:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>これらは取引に基づいて自動計算された引落予定です</li>
-                  <li>実際の引落日は銀行の営業日により前後する場合があります</li>
-                  <li>店舗情報と用途が登録されている場合に表示されます</li>
-                  {onTransactionClick ? (
-                    <li>引落予定項目をクリックすると元の取引データが編集できます</li>
-                  ) : (
-                    <li>引落予定は表示のみで、直接編集はできません</li>
-                  )}
+                  <li>引落予定項目をクリックすると元の取引データが編集できます</li>
+                  <li>店舗情報、用途がある場合は項目に表示されます</li>
+                  <li>編集により引落予定の金額や詳細を変更できます</li>
                 </ul>
               </div>
             </div>

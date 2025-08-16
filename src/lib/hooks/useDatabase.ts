@@ -674,6 +674,65 @@ export function useMonthlySchedule(year: number, month: number) {
 }
 
 /**
+ * Single transaction hook for getting transaction by ID
+ */
+export function useTransaction(transactionId?: string) {
+  const [state, setState] = useState<DatabaseState<Transaction>>({
+    data: null,
+    isLoading: false,
+    error: null
+  });
+  
+  const fetchTransaction = useCallback(async (id: string) => {
+    try {
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      const cacheKey = `transaction-${id}`;
+      const cached = dbCache.get<Transaction>(cacheKey);
+      if (cached) {
+        setState({ data: cached, isLoading: false, error: null });
+        return cached;
+      }
+      
+      const transaction = await transactionOperations.getById(id);
+      
+      setState({ 
+        data: transaction || null, 
+        isLoading: false, 
+        error: transaction ? null : new Error('Transaction not found') 
+      });
+      
+      if (transaction) {
+        dbCache.set(cacheKey, transaction, 2 * 60 * 1000); // Cache for 2 minutes
+      }
+      
+      return transaction;
+    } catch (error) {
+      const dbError = error instanceof DatabaseOperationError 
+        ? error 
+        : new DatabaseOperationError('Failed to fetch transaction', error);
+      setState(prev => ({ ...prev, isLoading: false, error: dbError }));
+      throw error;
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (transactionId) {
+      fetchTransaction(transactionId);
+    } else {
+      setState({ data: null, isLoading: false, error: null });
+    }
+  }, [transactionId, fetchTransaction]);
+  
+  return {
+    transaction: state.data,
+    isLoading: state.isLoading,
+    error: state.error,
+    refetch: transactionId ? () => fetchTransaction(transactionId) : undefined
+  };
+}
+
+/**
  * Database statistics hook
  */
 export function useDatabaseStats() {
