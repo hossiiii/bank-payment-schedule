@@ -133,8 +133,8 @@ describe('DayTotalModal', () => {
       expect(screen.getAllByText('￥45,840').length).toBeGreaterThan(0);
       expect(screen.getByText('引落予定合計:')).toBeInTheDocument();
       expect(screen.getAllByText('￥5,000').length).toBeGreaterThan(0);
-      expect(screen.getByText('総合計:')).toBeInTheDocument();
-      expect(screen.getByText('￥50,840')).toBeInTheDocument();
+      // 新しい分離ダイアログ機能では総合計は表示されない
+      expect(screen.queryByText('総合計:')).not.toBeInTheDocument();
     });
 
     it('isOpenがfalseのときにモーダルが表示されないこと', () => {

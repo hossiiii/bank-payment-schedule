@@ -209,11 +209,6 @@ export function DayTotalModal({
                     引落予定合計: <span className="font-bold text-blue-600">{formatAmount(dayTotalData.scheduleTotal)}</span>
                   </p>
                 )}
-                {dayTotalData.hasTransactions && dayTotalData.hasSchedule && (
-                  <p>
-                    総合計: <span className="font-bold text-gray-900">{formatAmount(dayTotalData.totalAmount)}</span>
-                  </p>
-                )}
               </div>
             </div>
             <button
