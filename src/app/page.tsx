@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CalendarView, MonthNavigation, TransactionModal } from '@/components/calendar';
+import { CalendarView, MonthNavigation, TransactionModal, DayTotalModal } from '@/components/calendar';
 import { Navigation, NavigationIcons } from '@/components/ui';
 import { useBanks, useCards, useTransactions, useMonthlySchedule } from '@/lib/hooks/useDatabase';
 import { Transaction, TransactionInput } from '@/types/database';
+import { DayTotalData } from '@/types/calendar';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
 
 export default function CalendarPage() {
@@ -21,6 +22,10 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Day total modal state
+  const [isDayTotalModalOpen, setIsDayTotalModalOpen] = useState(false);
+  const [selectedDayTotalData, setSelectedDayTotalData] = useState<DayTotalData | null>(null);
 
   // Database hooks
   const { banks, isLoading: banksLoading, error: banksError } = useBanks();
@@ -82,6 +87,22 @@ export default function CalendarPage() {
     setIsModalOpen(true);
   };
 
+  // Handle day total click
+  const handleDayTotalClick = (date: Date, dayTotalData: DayTotalData) => {
+    setSelectedDate(date);
+    setSelectedDayTotalData(dayTotalData);
+    setIsDayTotalModalOpen(true);
+  };
+
+  // Handle day total modal transaction click
+  const handleDayTotalTransactionClick = (transaction: Transaction) => {
+    // DayTotalModalを閉じてTransactionModalを開く
+    setIsDayTotalModalOpen(false);
+    setSelectedTransaction(transaction);
+    setSelectedDate(new Date(transaction.date));
+    setIsModalOpen(true);
+  };
+
   // Handle transaction save
   const handleTransactionSave = async (transactionInput: TransactionInput) => {
     try {
@@ -113,6 +134,12 @@ export default function CalendarPage() {
     setIsModalOpen(false);
     setSelectedDate(null);
     setSelectedTransaction(null);
+  };
+
+  // Handle day total modal close
+  const handleDayTotalModalClose = () => {
+    setIsDayTotalModalOpen(false);
+    setSelectedDayTotalData(null);
   };
 
   // Loading state
@@ -210,6 +237,7 @@ export default function CalendarPage() {
                 cards={cards}
                 onDateClick={handleDateClick}
                 onTransactionClick={handleTransactionClick}
+                onDayTotalClick={handleDayTotalClick}
                 onMonthChange={handleMonthChange}
               />
             )}
@@ -228,6 +256,19 @@ export default function CalendarPage() {
           banks={banks}
           cards={cards}
           isLoading={isLoading}
+        />
+      )}
+
+      {/* Day total modal */}
+      {isDayTotalModalOpen && selectedDate && selectedDayTotalData && (
+        <DayTotalModal
+          isOpen={isDayTotalModalOpen}
+          onClose={handleDayTotalModalClose}
+          onTransactionClick={handleDayTotalTransactionClick}
+          selectedDate={selectedDate}
+          dayTotalData={selectedDayTotalData}
+          banks={banks}
+          cards={cards}
         />
       )}
 
