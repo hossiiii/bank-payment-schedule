@@ -425,6 +425,26 @@ export function useCards(bankId?: string) {
     };
   }, []);
   
+  const bulkUpdateCards = useCallback(async (updates: Map<string, Partial<CardInput>>): Promise<void> => {
+    try {
+      setState(prev => ({ ...prev, error: null }));
+      
+      await cardOperations.bulkUpdate(updates);
+      
+      // Refresh the cards list after bulk update
+      await fetchCards();
+      
+      dbCache.invalidate('cards');
+      dbCache.invalidate('schedule');
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error : new Error('Failed to bulk update cards')
+      }));
+      throw error;
+    }
+  }, [fetchCards]);
+
   return {
     cards: state.data,
     isLoading: state.isLoading,
@@ -432,7 +452,8 @@ export function useCards(bankId?: string) {
     refetch: fetchCards,
     createCard,
     updateCard,
-    deleteCard
+    deleteCard,
+    bulkUpdateCards
   };
 }
 
@@ -614,6 +635,26 @@ export function useTransactions(filters?: TransactionFilters) {
     };
   }, []);
   
+  const bulkUpdateTransactions = useCallback(async (updates: Map<string, { scheduledPayDate: number }>): Promise<void> => {
+    try {
+      setState(prev => ({ ...prev, error: null }));
+      
+      await transactionOperations.bulkUpdate(updates);
+      
+      // Refresh the transactions list after bulk update
+      await fetchTransactions();
+      
+      dbCache.invalidate('transactions');
+      dbCache.invalidate('schedule');
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error : new Error('Failed to bulk update transactions')
+      }));
+      throw error;
+    }
+  }, [fetchTransactions]);
+
   return {
     transactions: state.data,
     isLoading: state.isLoading,
@@ -621,7 +662,8 @@ export function useTransactions(filters?: TransactionFilters) {
     refetch: fetchTransactions,
     createTransaction,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
+    bulkUpdateTransactions
   };
 }
 

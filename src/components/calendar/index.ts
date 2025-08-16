@@ -5,7 +5,9 @@
  * with transactions and payment schedules.
  */
 
-export { CalendarView, MonthNavigation, type CalendarViewProps, type MonthNavigationProps } from './CalendarView';
+export { CalendarView, type CalendarViewProps } from './CalendarView';
+export { MonthNavigation, type MonthNavigationProps } from './MonthNavigation';
+export { CalendarCell } from './CalendarCell';
 export { TransactionModal, type TransactionModalProps } from './TransactionModal';
 export { TransactionViewModal, type TransactionViewModalProps } from './TransactionViewModal';
 export { ScheduleModal, type ScheduleModalProps } from './ScheduleModal';

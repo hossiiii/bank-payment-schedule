@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { BankMaster, CardMaster } from '@/components/settings';
+import { DataFixPanel } from '@/components/settings/DataFixPanel';
 import { TopNavigation, Navigation, NavigationIcons } from '@/components/ui';
-import { useBanks, useCards, useDatabaseStats } from '@/lib/hooks/useDatabase';
+import { useBanks, useCards, useTransactions, useDatabaseStats } from '@/lib/hooks/useDatabase';
 
 export default function SettingsPage() {
   // Database hooks
@@ -22,8 +23,16 @@ export default function SettingsPage() {
     error: cardsError,
     createCard,
     updateCard,
-    deleteCard
+    deleteCard,
+    bulkUpdateCards
   } = useCards();
+
+  const {
+    transactions,
+    isLoading: transactionsLoading,
+    error: transactionsError,
+    bulkUpdateTransactions
+  } = useTransactions();
 
   const {
     stats,
@@ -57,10 +66,10 @@ export default function SettingsPage() {
   };
 
   // Loading state
-  const isLoading = banksLoading || cardsLoading || statsLoading;
+  const isLoading = banksLoading || cardsLoading || transactionsLoading || statsLoading;
   
   // Error state
-  const error = banksError || cardsError || statsError;
+  const error = banksError || cardsError || transactionsError || statsError;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -153,6 +162,15 @@ export default function SettingsPage() {
           onCreateCard={async (cardData) => { await createCard(cardData); }}
           onUpdateCard={async (id, cardData) => { await updateCard(id, cardData); }}
           onDeleteCard={async (id) => { await deleteCard(id); }}
+        />
+
+        {/* Data Fix Panel */}
+        <DataFixPanel
+          cards={cards}
+          transactions={transactions}
+          onUpdateCards={bulkUpdateCards}
+          onRecalculateTransactions={bulkUpdateTransactions}
+          isLoading={isLoading}
         />
 
         {/* Data Management Section */}

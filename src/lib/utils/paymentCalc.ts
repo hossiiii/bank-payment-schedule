@@ -357,8 +357,12 @@ export function validateCardConfiguration(card: Card): {
   }
   
   // Check for optimization opportunities
-  if (!card.adjustWeekend) {
-    suggestions.push('Consider enabling weekend adjustment for more accurate payment dates');
+  if (!card.adjustWeekend && card.paymentDay !== '月末') {
+    suggestions.push('通常の日付指定の場合、週末調整を有効にすることを推奨します');
+  }
+  
+  if (card.adjustWeekend && card.paymentDay === '月末') {
+    suggestions.push('月末支払いの場合、実際の月末日を維持するため週末調整を無効にすることを検討してください');
   }
   
   return {

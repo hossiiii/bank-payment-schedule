@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from './Button';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -47,33 +48,36 @@ export function Modal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
-  // Focus management
+  // Focus management and body scroll lock
   useEffect(() => {
     if (isOpen) {
       // Store current focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
       
-      // Focus the modal
-      if (modalRef.current) {
-        modalRef.current.focus();
-      }
+      // Focus the modal after a short delay to ensure it's rendered
+      const timer = setTimeout(() => {
+        if (modalRef.current) {
+          modalRef.current.focus();
+        }
+      }, 100);
       
       // Prevent body scroll
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+      
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = originalOverflow;
+      };
     } else {
       // Restore focus to previous element
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();
       }
-      
-      // Restore body scroll
-      document.body.style.overflow = 'unset';
     }
-
-    // Cleanup function
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    
+    // Return empty cleanup function when modal is closed
+    return () => {};
   }, [isOpen]);
 
   // Handle backdrop click
@@ -99,18 +103,19 @@ export function Modal({
       className={cn(
         'fixed inset-0 z-50 flex items-center justify-center',
         'bg-black bg-opacity-50 backdrop-blur-sm',
-        'animate-in fade-in-0 duration-200',
+        'animate-in fade-in-0 duration-300',
         overlayClassName
       )}
       onClick={handleBackdropClick}
+      aria-hidden={!isOpen}
     >
       <div
         ref={modalRef}
         className={cn(
           'relative bg-white rounded-lg shadow-xl',
           'w-full m-4 max-h-[90vh] overflow-hidden',
-          'animate-in fade-in-0 zoom-in-95 duration-200',
-          'focus:outline-none',
+          'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
           sizes[size],
           className
         )}
@@ -129,15 +134,17 @@ export function Modal({
               'p-2 text-gray-400 hover:text-gray-600',
               'rounded-lg hover:bg-gray-100',
               'transition-colors duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-gray-500'
+              'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2'
             )}
             aria-label="モーダルを閉じる"
+            type="button"
           >
             <svg
               className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -268,35 +275,21 @@ export function ConfirmModal({
       </ModalBody>
       
       <ModalFooter>
-        <button
+        <Button
+          variant="outline"
           onClick={onClose}
           disabled={isLoading}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
         >
           {cancelText}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant={variant === 'destructive' ? 'destructive' : 'primary'}
           onClick={handleConfirm}
           disabled={isLoading}
-          className={cn(
-            'px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50',
-            variant === 'destructive'
-              ? 'bg-red-600 hover:bg-red-700'
-              : 'bg-blue-600 hover:bg-blue-700'
-          )}
+          isLoading={isLoading}
         >
-          {isLoading ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              処理中...
-            </>
-          ) : (
-            confirmText
-          )}
-        </button>
+          {isLoading ? '処理中...' : confirmText}
+        </Button>
       </ModalFooter>
     </Modal>
   );

@@ -316,7 +316,7 @@ describe('paymentCalc', () => {
       
       const validation = validateCardConfiguration(noWeekendCard);
       expect(validation.suggestions.length).toBeGreaterThan(0);
-      expect(validation.suggestions[0]).toContain('weekend adjustment');
+      expect(validation.suggestions[0]).toContain('週末調整');
     });
 
     it('should validate payment schedule logic', () => {

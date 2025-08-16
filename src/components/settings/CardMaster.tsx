@@ -64,7 +64,7 @@ export function CardMaster({
     closingDay: '',
     paymentDay: '',
     paymentMonthShift: 1,
-    adjustWeekend: true,
+    adjustWeekend: false,
     memo: ''
   });
 
@@ -83,7 +83,7 @@ export function CardMaster({
       closingDay: '',
       paymentDay: '',
       paymentMonthShift: 1,
-      adjustWeekend: true,
+      adjustWeekend: false,
       memo: ''
     });
     setErrors({});
@@ -590,17 +590,23 @@ export function CardMaster({
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-3 pt-6">
-                  <input
-                    type="checkbox"
-                    checked={formData.adjustWeekend}
-                    onChange={handleInputChange('adjustWeekend')}
-                    disabled={isFormDisabled}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label className="text-sm text-gray-700">
-                    土日祝日を翌営業日に調整
-                  </label>
+                <div className="space-y-2 pt-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.adjustWeekend}
+                      onChange={handleInputChange('adjustWeekend')}
+                      disabled={isFormDisabled}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="text-sm text-gray-700">
+                      土日祝日を翌営業日に調整
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    月末支払いの場合、チェックを外すと実際の月末日を維持します。
+                    通常の日付指定の場合は、チェックすることを推奨します。
+                  </p>
                 </div>
               </div>
 

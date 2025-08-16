@@ -7,7 +7,7 @@ import {
   ScheduleCalculationParams,
   ScheduleProcessingError
 } from '@/types/schedule';
-import { Transaction, Card, DatabaseOperationError } from '@/types/database';
+import { Transaction, Bank, Card, DatabaseOperationError } from '@/types/database';
 import { transformToPaymentScheduleView, validatePaymentScheduleView } from '@/lib/utils/scheduleUtils';
 import { useBanks, useCards, useTransactions } from './useDatabase';
 
@@ -22,7 +22,7 @@ class ScheduleCache {
   }>();
   private readonly defaultTTL = 5 * 60 * 1000; // 5 minutes
 
-  private generateDependencyHash(transactions: Transaction[], banks: any[], cards: Card[]): {
+  private generateDependencyHash(transactions: Transaction[], banks: Bank[], cards: Card[]): {
     transactions: string;
     banks: string; 
     cards: string;
@@ -52,7 +52,7 @@ class ScheduleCache {
     key: string, 
     data: PaymentScheduleView,
     transactions: Transaction[],
-    banks: any[],
+    banks: Bank[],
     cards: Card[]
   ): void {
     const dependencies = this.generateDependencyHash(transactions, banks, cards);
@@ -66,7 +66,7 @@ class ScheduleCache {
   get(
     key: string,
     transactions: Transaction[],
-    banks: any[],
+    banks: Bank[],
     cards: Card[]
   ): PaymentScheduleView | null {
     const item = this.cache.get(key);

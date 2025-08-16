@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'success';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'success' | 'danger';
   size?: 'xs' | 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -58,7 +58,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'border-gray-300 text-gray-700 bg-white',
         'hover:bg-gray-50 active:bg-gray-100',
         'focus:ring-blue-500',
-        'disabled:bg-gray-50 disabled:text-gray-300'
+        'disabled:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200'
       ],
       ghost: [
         'text-gray-700 bg-transparent',
@@ -67,6 +67,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'disabled:text-gray-300'
       ],
       destructive: [
+        'bg-red-600 text-white',
+        'hover:bg-red-700 active:bg-red-800',
+        'focus:ring-red-500',
+        'disabled:bg-red-300'
+      ],
+      danger: [
         'bg-red-600 text-white',
         'hover:bg-red-700 active:bg-red-800',
         'focus:ring-red-500',
@@ -108,6 +114,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"

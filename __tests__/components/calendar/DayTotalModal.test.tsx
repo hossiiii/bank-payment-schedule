@@ -98,6 +98,8 @@ describe('DayTotalModal', () => {
     date: '2024-02-15',
     totalAmount: 50840,
     transactionTotal: 45840, // 取引合計: 15,000 + 22,840 + 8,000
+    cardTransactionTotal: 37840, // カード払い合計: 15,000 + 22,840
+    bankTransactionTotal: 8000, // 銀行引落合計: 8,000
     scheduleTotal: 5000, // 引落予定合計: 5,000
     transactionCount: 3,
     scheduleCount: 1,
@@ -106,6 +108,8 @@ describe('DayTotalModal', () => {
     scheduleItems: mockScheduleItems,
     hasData: true,
     hasTransactions: true,
+    hasCardTransactions: true,
+    hasBankTransactions: true,
     hasSchedule: true
   };
 
@@ -359,6 +363,8 @@ describe('DayTotalModal', () => {
         date: '2024-02-20',
         totalAmount: 0,
         transactionTotal: 0,
+        cardTransactionTotal: 0,
+        bankTransactionTotal: 0,
         scheduleTotal: 0,
         transactionCount: 0,
         scheduleCount: 0,
@@ -367,6 +373,8 @@ describe('DayTotalModal', () => {
         scheduleItems: [],
         hasData: false,
         hasTransactions: false,
+        hasCardTransactions: false,
+        hasBankTransactions: false,
         hasSchedule: false
       };
 
@@ -384,6 +392,8 @@ describe('DayTotalModal', () => {
         date: '2024-02-25',
         totalAmount: 15000,
         transactionTotal: 15000,
+        cardTransactionTotal: 15000,
+        bankTransactionTotal: 0,
         scheduleTotal: 0,
         transactionCount: 1,
         scheduleCount: 0,
@@ -392,6 +402,8 @@ describe('DayTotalModal', () => {
         scheduleItems: [],
         hasData: true,
         hasTransactions: true,
+        hasCardTransactions: true,
+        hasBankTransactions: false,
         hasSchedule: false
       };
 
@@ -412,6 +424,8 @@ describe('DayTotalModal', () => {
         date: '2024-02-28',
         totalAmount: 5000,
         transactionTotal: 0,
+        cardTransactionTotal: 0,
+        bankTransactionTotal: 0,
         scheduleTotal: 5000,
         transactionCount: 0,
         scheduleCount: 1,
@@ -420,6 +434,8 @@ describe('DayTotalModal', () => {
         scheduleItems: mockScheduleItems,
         hasData: true,
         hasTransactions: false,
+        hasCardTransactions: false,
+        hasBankTransactions: false,
         hasSchedule: true
       };
 
@@ -573,6 +589,8 @@ describe('DayTotalModal', () => {
         date: '2024-02-25',
         totalAmount: 15000,
         transactionTotal: 15000,
+        cardTransactionTotal: 15000,
+        bankTransactionTotal: 0,
         scheduleTotal: 0,
         transactionCount: 1,
         scheduleCount: 0,
@@ -581,6 +599,8 @@ describe('DayTotalModal', () => {
         scheduleItems: [],
         hasData: true,
         hasTransactions: true,
+        hasCardTransactions: true,
+        hasBankTransactions: false,
         hasSchedule: false
       };
 
@@ -595,6 +615,8 @@ describe('DayTotalModal', () => {
         date: '2024-02-28',
         totalAmount: 5000,
         transactionTotal: 0,
+        cardTransactionTotal: 0,
+        bankTransactionTotal: 0,
         scheduleTotal: 5000,
         transactionCount: 0,
         scheduleCount: 1,
@@ -603,6 +625,8 @@ describe('DayTotalModal', () => {
         scheduleItems: mockScheduleItems,
         hasData: true,
         hasTransactions: false,
+        hasCardTransactions: false,
+        hasBankTransactions: false,
         hasSchedule: true
       };
 
