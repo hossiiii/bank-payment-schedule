@@ -9,6 +9,7 @@ import { BaseModal, BaseModalFooter } from './BaseModal';
 export interface ScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onTransactionClick?: (transactionId: string) => void;
   selectedDate: Date;
   scheduleItems: ScheduleItem[];
   banks: Bank[];
@@ -120,6 +121,7 @@ function groupSchedulesByBank(
 export function ScheduleModal({
   isOpen,
   onClose,
+  onTransactionClick,
   selectedDate,
   scheduleItems,
   banks,
@@ -134,6 +136,13 @@ export function ScheduleModal({
   // 総合計算
   const totalAmount = scheduleItems.reduce((sum, item) => sum + item.amount, 0);
   const totalCount = scheduleItems.length;
+
+  // Handle schedule click for editing
+  const handleScheduleClick = (scheduleItem: ScheduleItem) => {
+    if (onTransactionClick) {
+      onTransactionClick(scheduleItem.transactionId);
+    }
+  };
 
   return (
     <BaseModal
@@ -225,7 +234,10 @@ export function ScheduleModal({
                   {bankGroup.items.map(item => (
                     <div
                       key={item.id}
-                      className="px-4 py-3 flex items-center justify-between bg-white hover:bg-blue-25 transition-colors"
+                      onClick={() => onTransactionClick && handleScheduleClick(item.scheduleItem)}
+                      className={`px-4 py-3 flex items-center justify-between bg-white transition-colors ${
+                        onTransactionClick ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-blue-25'
+                      }`}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-3">
@@ -264,7 +276,17 @@ export function ScheduleModal({
                         <span className="font-bold text-gray-900">
                           {formatAmount(item.amount)}
                         </span>
-                        {/* 表示のみなので編集アイコンは不要 */}
+                        {/* 編集可能な場合は編集アイコンを表示 */}
+                        {onTransactionClick && (
+                          <svg 
+                            className="w-4 h-4 text-blue-600 group-hover:text-blue-700 transition-colors" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -287,7 +309,11 @@ export function ScheduleModal({
                   <li>これらは取引に基づいて自動計算された引落予定です</li>
                   <li>実際の引落日は銀行の営業日により前後する場合があります</li>
                   <li>店舗情報と用途が登録されている場合に表示されます</li>
-                  <li>引落予定は表示のみで、直接編集はできません</li>
+                  {onTransactionClick ? (
+                    <li>引落予定項目をクリックすると元の取引データが編集できます</li>
+                  ) : (
+                    <li>引落予定は表示のみで、直接編集はできません</li>
+                  )}
                 </ul>
               </div>
             </div>

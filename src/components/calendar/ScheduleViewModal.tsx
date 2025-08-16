@@ -9,7 +9,7 @@ import { BaseModal, BaseModalFooter } from './BaseModal';
 export interface ScheduleViewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onScheduleClick: (scheduleItem: ScheduleItem) => void;
+  onTransactionClick: (transactionId: string) => void;
   selectedDate: Date;
   scheduleItems: ScheduleItem[];
   banks: Bank[];
@@ -192,7 +192,7 @@ function groupSchedulesByBank(
 export function ScheduleViewModal({
   isOpen,
   onClose,
-  onScheduleClick,
+  onTransactionClick,
   selectedDate,
   scheduleItems,
   banks,
@@ -230,8 +230,9 @@ export function ScheduleViewModal({
   const totalCount = scheduleItems.length;
 
   const handleScheduleClick = (scheduleItem: ScheduleItem) => {
-    onScheduleClick(scheduleItem);
-    // モーダルは開いたままにして、編集モーダルを上に表示
+    // 引落予定の編集アイコンをクリックした時は、元の取引データを編集する
+    onTransactionClick(scheduleItem.transactionId);
+    // モーダルは開いたままにして、TransactionModalを上に表示
   };
 
   return (
@@ -342,21 +343,7 @@ export function ScheduleViewModal({
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                 予定
                               </span>
-                            </div>
-                            
-                            {/* 追加情報 */}
-                            <div className="mt-1 space-y-1">
-                              {item.storeName && (
-                                <p className="text-sm text-gray-600 truncate">
-                                  店舗: {item.storeName}
-                                </p>
-                              )}
-                              {item.usage && (
-                                <p className="text-sm text-gray-600 truncate">
-                                  用途: {item.usage}
-                                </p>
-                              )}
-                            </div>
+                            </div>                            
                           </div>
                         </div>
                       </div>
@@ -391,9 +378,9 @@ export function ScheduleViewModal({
               <div className="text-sm text-gray-600">
                 <p className="font-medium mb-1">操作ガイド:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>引落予定項目をクリックすると詳細編集ができます</li>
+                  <li>引落予定項目をクリックすると元の取引データが編集できます</li>
                   <li>店舗情報、用途がある場合は項目に表示されます</li>
-                  <li>編集モードでは引落予定の詳細を変更できます</li>
+                  <li>編集により引落予定の金額や詳細を変更できます</li>
                 </ul>
               </div>
             </div>

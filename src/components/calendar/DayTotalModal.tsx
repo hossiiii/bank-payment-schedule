@@ -12,6 +12,7 @@ export interface DayTotalModalProps {
   onClose: () => void;
   onTransactionClick: (transaction: Transaction) => void;
   onScheduleClick: (scheduleItem: ScheduleItem) => void;
+  onScheduleTransactionClick?: (transactionId: string) => void;
   onViewTransactions: (transactions: Transaction[]) => void;
   onViewSchedules: (scheduleItems: ScheduleItem[]) => void;
   selectedDate: Date;
@@ -158,6 +159,7 @@ export function DayTotalModal({
   onClose,
   onTransactionClick,
   onScheduleClick,
+  onScheduleTransactionClick,
   onViewTransactions,
   onViewSchedules,
   selectedDate,
@@ -180,7 +182,13 @@ export function DayTotalModal({
     if (item.transaction) {
       onTransactionClick(item.transaction);
     } else if (item.scheduleItem) {
-      onScheduleClick(item.scheduleItem);
+      // 新しいハンドラーがある場合は、元の取引データを編集
+      if (onScheduleTransactionClick) {
+        onScheduleTransactionClick(item.scheduleItem.transactionId);
+      } else {
+        // フォールバック：従来のスケジュール編集
+        onScheduleClick(item.scheduleItem);
+      }
     }
   };
   

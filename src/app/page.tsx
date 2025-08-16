@@ -124,10 +124,36 @@ export default function CalendarPage() {
     setIsScheduleViewModalOpen(true);
   };
   
-  // Handle schedule click from modals
+  // Handle schedule click from modals (legacy - for ScheduleEditModal)
   const handleScheduleClick = (scheduleItem: ScheduleItem) => {
     setSelectedScheduleItem(scheduleItem);
     setIsScheduleEditModalOpen(true);
+  };
+  
+  // Handle transaction click from schedule modals
+  const handleScheduleTransactionClick = async (transactionId: string) => {
+    try {
+      // まず現在のtransactionsから検索
+      let transaction = transactions.find(t => t.id === transactionId);
+      
+      if (!transaction) {
+        // 現在の月のtransactionsにない場合、データベースから直接取得
+        const { transactionOperations } = await import('@/lib/database');
+        transaction = await transactionOperations.getById(transactionId);
+      }
+      
+      if (transaction) {
+        // ScheduleViewModalを閉じてTransactionModalを開く
+        setIsScheduleViewModalOpen(false);
+        setSelectedTransaction(transaction);
+        setSelectedDate(new Date(transaction.date));
+        setIsModalOpen(true);
+      } else {
+        console.error('Transaction not found:', transactionId);
+      }
+    } catch (error) {
+      console.error('Failed to get transaction:', error);
+    }
   };
   
   // Handle schedule save
@@ -358,7 +384,7 @@ export default function CalendarPage() {
         <ScheduleViewModal
           isOpen={isScheduleViewModalOpen}
           onClose={handleScheduleViewModalClose}
-          onScheduleClick={handleScheduleClick}
+          onTransactionClick={handleScheduleTransactionClick}
           selectedDate={selectedDate}
           scheduleItems={selectedScheduleItems}
           banks={banks}
@@ -387,6 +413,7 @@ export default function CalendarPage() {
           onClose={handleDayTotalModalClose}
           onTransactionClick={handleTransactionClick}
           onScheduleClick={handleScheduleClick}
+          onScheduleTransactionClick={handleScheduleTransactionClick}
           onViewTransactions={handleTransactionViewClick}
           onViewSchedules={handleScheduleViewClick}
           selectedDate={selectedDate}
