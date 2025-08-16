@@ -8,6 +8,7 @@ export interface SwipeNavigationOptions {
   threshold?: number; // Minimum distance to trigger swipe (px)
   velocityThreshold?: number; // Minimum velocity to trigger swipe (px/ms)
   preventDefaultTouchBehavior?: boolean; // Prevent default touch behaviors like scrolling
+  enableClickInterception?: boolean; // Whether to intercept click events during swipe detection
 }
 
 export interface SwipeNavigationReturn {
@@ -29,6 +30,7 @@ interface SwipeState {
   isPointerDown: boolean;
   pointerId: number | null;
   isHorizontalSwipe: boolean | null; // null = not determined, true = horizontal, false = vertical
+  hasMoved: boolean; // Track if pointer has moved significantly
 }
 
 export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeNavigationReturn {
@@ -37,7 +39,8 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
     onSwipeRight,
     threshold = 50,
     velocityThreshold = 0.1,
-    preventDefaultTouchBehavior = true
+    preventDefaultTouchBehavior = true,
+    enableClickInterception = false
   } = options;
 
   const swipeState = useRef<SwipeState>({
@@ -48,7 +51,8 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
     startTime: 0,
     isPointerDown: false,
     pointerId: null,
-    isHorizontalSwipe: null
+    isHorizontalSwipe: null,
+    hasMoved: false
   });
 
   const resetSwipeState = useCallback(() => {
@@ -60,7 +64,8 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
       startTime: 0,
       isPointerDown: false,
       pointerId: null,
-      isHorizontalSwipe: null
+      isHorizontalSwipe: null,
+      hasMoved: false
     };
   }, []);
 
@@ -78,10 +83,13 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
     swipeState.current.isPointerDown = true;
     swipeState.current.pointerId = e.pointerId;
     swipeState.current.isHorizontalSwipe = null;
+    swipeState.current.hasMoved = false;
 
-    // Capture the pointer to continue receiving events even if pointer leaves element
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, []);
+    // Only capture pointer if click interception is enabled
+    if (enableClickInterception) {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+  }, [enableClickInterception]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!swipeState.current.isPointerDown || swipeState.current.pointerId !== e.pointerId) {
@@ -93,6 +101,11 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
 
     const deltaX = Math.abs(e.clientX - swipeState.current.startX);
     const deltaY = Math.abs(e.clientY - swipeState.current.startY);
+
+    // Mark as moved if there's significant movement
+    if (!swipeState.current.hasMoved && (deltaX > 5 || deltaY > 5)) {
+      swipeState.current.hasMoved = true;
+    }
 
     // Determine if this is a horizontal or vertical swipe once we have enough movement
     if (swipeState.current.isHorizontalSwipe === null && (deltaX > 10 || deltaY > 10)) {
@@ -124,11 +137,17 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
       }
     }
 
-    // Release pointer capture
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    // Release pointer capture only if it was set
+    if (enableClickInterception) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore errors if pointer capture wasn't set
+      }
+    }
     
     resetSwipeState();
-  }, [onSwipeLeft, onSwipeRight, threshold, velocityThreshold, resetSwipeState]);
+  }, [onSwipeLeft, onSwipeRight, threshold, velocityThreshold, enableClickInterception, resetSwipeState]);
 
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
     if (swipeState.current.pointerId !== e.pointerId) {
@@ -136,14 +155,16 @@ export function useSwipeNavigation(options: SwipeNavigationOptions = {}): SwipeN
     }
 
     // Release pointer capture if it was set
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore errors if pointer capture wasn't set
+    if (enableClickInterception) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore errors if pointer capture wasn't set
+      }
     }
 
     resetSwipeState();
-  }, [resetSwipeState]);
+  }, [enableClickInterception, resetSwipeState]);
 
   return {
     handlers: {

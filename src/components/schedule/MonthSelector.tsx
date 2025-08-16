@@ -79,7 +79,8 @@ export function MonthSelector({
     onSwipeRight: handlePrevious,
     threshold: 60,
     velocityThreshold: 0.1,
-    preventDefaultTouchBehavior: true
+    preventDefaultTouchBehavior: true,
+    enableClickInterception: false // Disable pointer capture to allow click events
   });
 
   return (

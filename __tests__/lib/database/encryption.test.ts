@@ -39,7 +39,7 @@ const sensitiveCard: CardInput = {
 
 describe('Database Encryption', () => {
   let testBankId: string;
-  let testCardId: string;
+  // let testCardId: string;
 
   beforeEach(async () => {
     // Clear database and setup fresh instance
@@ -80,7 +80,7 @@ describe('Database Encryption', () => {
       // Verify no field is both encrypted and plaintext
       Object.entries(ENCRYPTION_CONFIG).forEach(([, config]) => {
         const duplicates = config.encrypted.filter(field => 
-          config.plaintext.includes(field)
+          config.plaintext.includes(field as "id" | "createdAt")
         );
         expect(duplicates).toHaveLength(0);
       });
@@ -150,14 +150,14 @@ describe('Database Encryption', () => {
       testBankId = bank.id;
       
       sensitiveCard.bankId = testBankId;
-      const card = await cardOperations.create(sensitiveCard);
-      testCardId = card.id;
+      await cardOperations.create(sensitiveCard);
+      // testCardId = card.id;
       
       // Verify relationships work
       const cardsForBank = await cardOperations.getByBankId(testBankId);
       expect(cardsForBank).toHaveLength(1);
-      expect(cardsForBank[0].name).toBe('秘匿カード情報');
-      expect(cardsForBank[0].bankId).toBe(testBankId);
+      expect(cardsForBank[0]?.name).toBe('秘匿カード情報');
+      expect(cardsForBank[0]?.bankId).toBe(testBankId);
     });
 
     it('should handle all CRUD operations', async () => {

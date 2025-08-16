@@ -69,7 +69,8 @@ export function CalendarView({
     onSwipeRight: handlePreviousMonth,
     threshold: 60,
     velocityThreshold: 0.1,
-    preventDefaultTouchBehavior: true
+    preventDefaultTouchBehavior: true,
+    enableClickInterception: false // Disable pointer capture to allow click events
   });
   
   // Generate calendar grid
@@ -126,6 +127,7 @@ export function CalendarView({
 
   const handleTransactionClick = (e: React.MouseEvent, transaction: Transaction) => {
     e.stopPropagation();
+    e.preventDefault(); // Prevent any potential conflicts with pointer events
     onTransactionClick(transaction);
   };
 

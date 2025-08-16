@@ -12,9 +12,9 @@ import { ScheduleCalculationParams } from '@/types/schedule';
 
 // Mock data for testing
 const mockBanks: Bank[] = [
-  { id: 'bank1', name: 'SBIネット銀行' },
-  { id: 'bank2', name: 'みずほ銀行' },
-  { id: 'bank3', name: 'イオン銀行' }
+  { id: 'bank1', name: 'SBIネット銀行', createdAt: Date.now() },
+  { id: 'bank2', name: 'みずほ銀行', createdAt: Date.now() },
+  { id: 'bank3', name: 'イオン銀行', createdAt: Date.now() }
 ];
 
 const mockCards: Card[] = [
@@ -25,7 +25,8 @@ const mockCards: Card[] = [
     closingDay: '10',
     paymentDay: '2',
     paymentMonthShift: 1,
-    adjustWeekend: true
+    adjustWeekend: true,
+    createdAt: Date.now()
   },
   {
     id: 'card2',
@@ -34,7 +35,8 @@ const mockCards: Card[] = [
     closingDay: '月末',
     paymentDay: '27',
     paymentMonthShift: 1,
-    adjustWeekend: true
+    adjustWeekend: true,
+    createdAt: Date.now()
   }
 ];
 
@@ -85,7 +87,7 @@ describe('scheduleUtils', () => {
     it('should filter transactions for August 2025', () => {
       const filtered = filterTransactionsForMonth(mockTransactions, 2025, 8);
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].id).toBe('tx3');
+      expect(filtered[0]?.id).toBe('tx3');
     });
 
     it('should return empty array for months with no transactions', () => {
@@ -127,8 +129,8 @@ describe('scheduleUtils', () => {
       expect(summary1?.paymentName).toBe('イオンカード');
       expect(summary1?.totalAmount).toBe(2500);
       expect(summary1?.bankPayments).toHaveLength(1);
-      expect(summary1?.bankPayments[0].bankId).toBe('bank3');
-      expect(summary1?.bankPayments[0].amount).toBe(2500);
+      expect(summary1?.bankPayments[0]?.bankId).toBe('bank3');
+      expect(summary1?.bankPayments[0]?.amount).toBe(2500);
     });
   });
 
@@ -214,7 +216,7 @@ describe('scheduleUtils', () => {
       expect(result.uniqueBanks).toHaveLength(2); // bank1 and bank3
       
       // Check that payments are sorted by date
-      expect(result.payments[0].sortKey).toBeLessThanOrEqual(result.payments[1].sortKey);
+      expect(result.payments[0]?.sortKey).toBeLessThanOrEqual(result.payments[1]?.sortKey ?? 0);
     });
 
     it('should handle empty transactions gracefully', () => {
@@ -235,7 +237,9 @@ describe('scheduleUtils', () => {
     });
 
     it('should handle month with only bank transactions', () => {
-      const bankOnlyTransactions = [mockTransactions[2]]; // Only bank transaction
+      const transaction = mockTransactions[2];
+      if (!transaction) throw new Error('Mock transaction not found');
+      const bankOnlyTransactions = [transaction]; // Only bank transaction
       
       const params: ScheduleCalculationParams = {
         transactions: bankOnlyTransactions,
@@ -249,17 +253,22 @@ describe('scheduleUtils', () => {
       
       expect(result.month).toBe('2025年8月');
       expect(result.payments).toHaveLength(1);
-      expect(result.payments[0].paymentName).toBe('銀行引落');
-      expect(result.payments[0].totalAmount).toBe(8000);
+      expect(result.payments[0]?.paymentName).toBe('銀行引落');
+      expect(result.payments[0]?.totalAmount).toBe(8000);
     });
   });
 
   describe('edge cases', () => {
     it('should handle transactions without store names', () => {
+      const baseTransaction = mockTransactions[0];
+      if (!baseTransaction) throw new Error('Mock transaction not found');
+      
       const transactionWithoutStore: Transaction = {
-        ...mockTransactions[0],
-        storeName: undefined,
-        usage: undefined
+        ...baseTransaction,
+        id: 'test-tx',
+        storeName: '',
+        usage: '',
+        createdAt: Date.now()
       };
       
       const params: ScheduleCalculationParams = {
@@ -272,13 +281,18 @@ describe('scheduleUtils', () => {
       
       const result = transformToPaymentScheduleView(params);
       expect(result.payments).toHaveLength(1);
-      expect(result.payments[0].transactions[0].storeName).toBeUndefined();
+      expect(result.payments[0]?.transactions[0]?.storeName).toBe('');
     });
 
     it('should handle missing card data', () => {
+      const baseTransaction2 = mockTransactions[0];
+      if (!baseTransaction2) throw new Error('Mock transaction not found');
+      
       const transactionWithInvalidCard: Transaction = {
-        ...mockTransactions[0],
-        cardId: 'non-existent-card'
+        ...baseTransaction2,
+        id: 'test-invalid-tx',
+        cardId: 'non-existent-card',
+        createdAt: Date.now()
       };
       
       const params: ScheduleCalculationParams = {
@@ -295,13 +309,18 @@ describe('scheduleUtils', () => {
 
     it('should handle month-end dates correctly', () => {
       const monthEndCard: Card = {
-        ...mockCards[1],
+        id: 'test-card',
+        name: 'テストカード',
+        bankId: 'bank1',
         closingDay: '月末',
-        paymentDay: '月末'
+        paymentDay: '月末',
+        paymentMonthShift: 1,
+        adjustWeekend: true,
+        createdAt: Date.now()
       };
       
       const params: ScheduleCalculationParams = {
-        transactions: [mockTransactions[1]],
+        transactions: mockTransactions[1] ? [mockTransactions[1]] : [],
         banks: mockBanks,
         cards: [monthEndCard],
         year: 2025,

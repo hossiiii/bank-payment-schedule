@@ -236,14 +236,14 @@ describe('Database Operations', () => {
         const bankTransaction = febSchedule.items[0];
         const cardTransaction = marSchedule.items[0];
         
-        expect(bankTransaction.paymentType).toBe('bank');
-        expect(cardTransaction.paymentType).toBe('card');
+        expect(bankTransaction?.paymentType).toBe('bank');
+        expect(cardTransaction?.paymentType).toBe('card');
         
         // Most important: No "Unknown Bank" should appear
-        expect(bankTransaction.bankName).toBe('テスト銀行');
-        expect(cardTransaction.bankName).toBe('テスト銀行');
-        expect(bankTransaction.bankName).not.toContain('Unknown');
-        expect(cardTransaction.bankName).not.toContain('Unknown');
+        expect(bankTransaction?.bankName).toBe('テスト銀行');
+        expect(cardTransaction?.bankName).toBe('テスト銀行');
+        expect(bankTransaction?.bankName).not.toContain('Unknown');
+        expect(cardTransaction?.bankName).not.toContain('Unknown');
       });
 
       it('should calculate bank totals correctly for mixed transactions', async () => {
@@ -265,9 +265,9 @@ describe('Database Operations', () => {
         // Check February schedule (bank transaction only)
         const febSchedule = await transactionOperations.getMonthlySchedule(2024, 2);
         expect(febSchedule.bankTotals).toHaveLength(1);
-        expect(febSchedule.bankTotals[0].bankName).toBe('テスト銀行');
-        expect(febSchedule.bankTotals[0].totalAmount).toBe(1000);
-        expect(febSchedule.bankTotals[0].transactionCount).toBe(1);
+        expect(febSchedule.bankTotals[0]?.bankName).toBe('テスト銀行');
+        expect(febSchedule.bankTotals[0]?.totalAmount).toBe(1000);
+        expect(febSchedule.bankTotals[0]?.transactionCount).toBe(1);
 
         // Note: Card transaction payment date will be calculated based on payment cycle
         // which might be in a different month. For this test, we just verify that

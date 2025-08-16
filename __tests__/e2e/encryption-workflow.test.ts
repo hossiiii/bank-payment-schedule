@@ -11,8 +11,8 @@
  */
 
 describe('E2E Encryption Workflow', () => {
-  const testPassword = 'SecurePassword123!';
-  const wrongPassword = 'WrongPassword456!';
+  // const testPassword = 'SecurePassword123!';
+  // const wrongPassword = 'WrongPassword456!';
   
   beforeEach(async () => {
     // Note: This would use Playwright MCP tools in actual implementation
