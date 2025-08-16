@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { useScheduleData, useFilteredSchedule } from '@/lib/hooks/useScheduleData';
+import { useScheduleData } from '@/lib/hooks/useScheduleData';
 import { useFilteredSchedule as useFilteredScheduleHook } from '@/lib/hooks/useFilteredSchedule';
 import { PaymentScheduleView, ScheduleFilters } from '@/types/schedule';
 
@@ -25,8 +25,8 @@ const mockUseTransactions = useTransactions as jest.MockedFunction<typeof useTra
 const mockTransformToPaymentScheduleView = transformToPaymentScheduleView as jest.MockedFunction<typeof transformToPaymentScheduleView>;
 
 const mockBanks = [
-  { id: 'bank1', name: 'SBIネット銀行' },
-  { id: 'bank2', name: 'みずほ銀行' }
+  { id: 'bank1', name: 'SBIネット銀行', createdAt: Date.now() },
+  { id: 'bank2', name: 'みずほ銀行', createdAt: Date.now() }
 ];
 
 const mockCards = [
@@ -37,7 +37,8 @@ const mockCards = [
     closingDay: '10',
     paymentDay: '2',
     paymentMonthShift: 1,
-    adjustWeekend: true
+    adjustWeekend: true,
+    createdAt: Date.now()
   }
 ];
 
@@ -219,8 +220,6 @@ describe('useScheduleData', () => {
   });
 
   it('should refetch data when called', async () => {
-    const mockRefetch = jest.fn();
-    
     const { result } = renderHook(() => useScheduleData(2025, 9));
 
     await waitFor(() => {
