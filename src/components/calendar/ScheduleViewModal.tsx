@@ -58,25 +58,96 @@ function groupSchedulesByBank(
     let bankName: string;
     let displayName: string;
     
+    // デバッグ情報を出力（開発環境のみ）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Processing scheduleItem:', {
+        transactionId: scheduleItem.transactionId,
+        paymentType: scheduleItem.paymentType,
+        cardId: scheduleItem.cardId,
+        cardName: scheduleItem.cardName,
+        bankName: scheduleItem.bankName
+      });
+    }
+    
     if (scheduleItem.paymentType === 'card' && scheduleItem.cardId) {
+      // カードID でカードを検索
       const card = cardMap.get(scheduleItem.cardId);
-      if (!card) return;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Card search result:', {
+          cardId: scheduleItem.cardId,
+          cardFound: !!card,
+          availableCardIds: Array.from(cardMap.keys()),
+          cardMapSize: cardMap.size
+        });
+      }
       
-      bankId = card.bankId;
-      const bank = bankMap.get(bankId);
-      if (!bank) return;
-      
-      bankName = bank.name;
-      displayName = scheduleItem.cardName || card.name;
+      if (!card) {
+        // カードが見つからない場合、カード名での検索を試行
+        const cardByName = cards.find(c => c.name === scheduleItem.cardName);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fallback card search by name:', {
+            cardName: scheduleItem.cardName,
+            cardFoundByName: !!cardByName,
+            availableCardNames: cards.map(c => c.name)
+          });
+        }
+        
+        if (!cardByName) {
+          console.warn('Card not found by ID or name for scheduleItem:', scheduleItem.transactionId);
+          return;
+        }
+        
+        // カード名で見つかった場合はそれを使用
+        bankId = cardByName.bankId;
+        const bank = bankMap.get(bankId);
+        if (!bank) {
+          console.warn('Bank not found for card:', cardByName.name);
+          return;
+        }
+        
+        bankName = bank.name;
+        displayName = scheduleItem.cardName || cardByName.name;
+      } else {
+        bankId = card.bankId;
+        const bank = bankMap.get(bankId);
+        if (!bank) {
+          console.warn('Bank not found for card:', card.name);
+          return;
+        }
+        
+        bankName = bank.name;
+        displayName = scheduleItem.cardName || card.name;
+      }
     } else if (scheduleItem.paymentType === 'bank') {
-      // 銀行名から銀行を特定
-      const bank = banks.find(b => b.name === scheduleItem.bankName);
-      if (!bank) return;
+      // 銀行名から銀行を特定（完全一致と部分一致両方を試行）
+      let bank = banks.find(b => b.name === scheduleItem.bankName);
+      
+      if (!bank) {
+        // 部分一致での検索を試行
+        bank = banks.find(b => 
+          b.name.includes(scheduleItem.bankName) || 
+          scheduleItem.bankName.includes(b.name)
+        );
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Bank search result:', {
+          bankName: scheduleItem.bankName,
+          bankFound: !!bank,
+          availableBankNames: banks.map(b => b.name)
+        });
+      }
+      
+      if (!bank) {
+        console.warn('Bank not found for scheduleItem:', scheduleItem.transactionId);
+        return;
+      }
       
       bankId = bank.id;
       bankName = bank.name;
       displayName = '自動銀行振替';
     } else {
+      console.warn('Unknown payment type for scheduleItem:', scheduleItem.transactionId);
       return;
     }
     
@@ -128,10 +199,31 @@ export function ScheduleViewModal({
   cards,
   className
 }: ScheduleViewModalProps) {
-  if (!isOpen || scheduleItems.length === 0) return null;
+  if (!isOpen) return null;
 
   // 引落予定データを銀行別にグループ化
   const bankGroups = groupSchedulesByBank(scheduleItems, banks, cards);
+  
+  // 詳細デバッグログ（開発環境のみ）
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ScheduleViewModal Debug:', {
+      scheduleItemsCount: scheduleItems.length,
+      bankGroupsCount: bankGroups.length,
+      scheduleItems: scheduleItems.map(item => ({
+        id: item.transactionId,
+        paymentType: item.paymentType,
+        cardId: item.cardId,
+        cardIdType: typeof item.cardId,
+        cardName: item.cardName,
+        bankName: item.bankName,
+        amount: item.amount
+      })),
+      banks: banks.map(bank => ({ id: bank.id, idType: typeof bank.id, name: bank.name })),
+      cards: cards.map(card => ({ id: card.id, idType: typeof card.id, name: card.name, bankId: card.bankId })),
+      banksCount: banks.length,
+      cardsCount: cards.length
+    });
+  }
   
   // 総合計算
   const totalAmount = scheduleItems.reduce((sum, scheduleItem) => sum + scheduleItem.amount, 0);
@@ -181,9 +273,26 @@ export function ScheduleViewModal({
         </div>
 
         {/* データがない場合 */}
-        {bankGroups.length === 0 ? (
+        {scheduleItems.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">この日の引落予定はありません</p>
+          </div>
+        ) : bankGroups.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">引落予定データに不整合があります</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-yellow-800 mb-2">データの詳細:</h4>
+              <ul className="text-sm text-yellow-700 space-y-1">
+                {scheduleItems.map((item, index) => (
+                  <li key={index}>
+                    {item.paymentType === 'card' ? `カード: ${item.cardName || item.cardId}` : `銀行: ${item.bankName}`} - {item.amount.toLocaleString()}円
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-yellow-600 mt-2">
+                ※ カードまたは銀行の設定データに問題がある可能性があります
+              </p>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

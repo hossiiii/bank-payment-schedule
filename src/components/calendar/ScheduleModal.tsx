@@ -126,7 +126,7 @@ export function ScheduleModal({
   cards,
   className
 }: ScheduleModalProps) {
-  if (!isOpen || scheduleItems.length === 0) return null;
+  if (!isOpen) return null;
 
   // 引落予定データを銀行別にグループ化
   const bankGroups = groupSchedulesByBank(scheduleItems, banks, cards);
@@ -174,9 +174,26 @@ export function ScheduleModal({
         </div>
 
         {/* データがない場合 */}
-        {bankGroups.length === 0 ? (
+        {scheduleItems.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">この日の引落予定はありません</p>
+          </div>
+        ) : bankGroups.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">引落予定データに不整合があります</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-yellow-800 mb-2">データの詳細:</h4>
+              <ul className="text-sm text-yellow-700 space-y-1">
+                {scheduleItems.map((item, index) => (
+                  <li key={index}>
+                    {item.paymentType === 'card' ? `カード: ${item.cardName || item.cardId}` : `銀行: ${item.bankName}`} - {item.amount.toLocaleString()}円
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-yellow-600 mt-2">
+                ※ カードまたは銀行の設定データに問題がある可能性があります
+              </p>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

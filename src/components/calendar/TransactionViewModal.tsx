@@ -231,11 +231,6 @@ export function TransactionViewModal({
                                 取引
                               </span>
                             </div>
-                            {item.storeName && (
-                              <p className="text-sm text-gray-600 truncate mt-1">
-                                店舗: {item.storeName}
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>
