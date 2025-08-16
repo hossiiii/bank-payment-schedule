@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CalendarView, MonthNavigation, TransactionModal, TransactionViewModal, ScheduleModal } from '@/components/calendar';
+import { CalendarView, MonthNavigation, TransactionModal, TransactionViewModal, ScheduleViewModal, ScheduleEditModal, DayTotalModal } from '@/components/calendar';
 import { Navigation, NavigationIcons } from '@/components/ui';
 import { useBanks, useCards, useTransactions, useMonthlySchedule } from '@/lib/hooks/useDatabase';
 import { Transaction, TransactionInput, ScheduleItem } from '@/types/database';
@@ -27,8 +27,16 @@ export default function CalendarPage() {
   const [selectedTransactions, setSelectedTransactions] = useState<Transaction[]>([]);
   
   // Schedule modal state
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isScheduleViewModalOpen, setIsScheduleViewModalOpen] = useState(false);
   const [selectedScheduleItems, setSelectedScheduleItems] = useState<ScheduleItem[]>([]);
+  
+  // Schedule edit modal state
+  const [isScheduleEditModalOpen, setIsScheduleEditModalOpen] = useState(false);
+  const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduleItem | null>(null);
+  
+  // Day total modal state
+  const [isDayTotalModalOpen, setIsDayTotalModalOpen] = useState(false);
+  const [selectedDayTotalData, setSelectedDayTotalData] = useState<any>(null);
 
   // Database hooks
   const { banks, isLoading: banksLoading, error: banksError } = useBanks();
@@ -90,19 +98,63 @@ export default function CalendarPage() {
     setIsModalOpen(true);
   };
 
-  // Handle transaction view click
-  const handleTransactionViewClick = (date: Date, transactions: Transaction[]) => {
+  // Handle transaction view click (for DayTotalModal)
+  const handleTransactionViewClick = (transactions: Transaction[]) => {
+    setSelectedTransactions(transactions);
+    setIsTransactionViewModalOpen(true);
+  };
+
+  // Handle schedule view click (for DayTotalModal)
+  const handleScheduleViewClick = (scheduleItems: ScheduleItem[]) => {
+    setSelectedScheduleItems(scheduleItems);
+    setIsScheduleViewModalOpen(true);
+  };
+  
+  // Handle transaction view click with date (for CalendarView)
+  const handleTransactionViewClickWithDate = (date: Date, transactions: Transaction[]) => {
     setSelectedDate(date);
     setSelectedTransactions(transactions);
     setIsTransactionViewModalOpen(true);
   };
 
-  // Handle schedule view click
-  const handleScheduleViewClick = (date: Date, scheduleItems: ScheduleItem[]) => {
+  // Handle schedule view click with date (for CalendarView)
+  const handleScheduleViewClickWithDate = (date: Date, scheduleItems: ScheduleItem[]) => {
     setSelectedDate(date);
     setSelectedScheduleItems(scheduleItems);
-    setIsScheduleModalOpen(true);
+    setIsScheduleViewModalOpen(true);
   };
+  
+  // Handle schedule click from modals
+  const handleScheduleClick = (scheduleItem: ScheduleItem) => {
+    setSelectedScheduleItem(scheduleItem);
+    setIsScheduleEditModalOpen(true);
+  };
+  
+  // Handle schedule save
+  const handleScheduleSave = async (scheduleId: string, updates: Partial<ScheduleItem>) => {
+    try {
+      // TODO: Implement schedule update functionality
+      console.log('Schedule update:', { scheduleId, updates });
+      // await updateScheduleItem(scheduleId, updates);
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      throw error;
+    }
+  };
+  
+  // Handle schedule delete
+  const handleScheduleDelete = async (scheduleId: string) => {
+    try {
+      // TODO: Implement schedule delete functionality
+      console.log('Schedule delete:', scheduleId);
+      // await deleteScheduleItem(scheduleId);
+    } catch (error) {
+      console.error('Failed to delete schedule:', error);
+      throw error;
+    }
+  };
+  
+  // Handle day total click
 
   // Handle transaction view modal transaction click
   const handleTransactionViewTransactionClick = (transaction: Transaction) => {
@@ -152,10 +204,22 @@ export default function CalendarPage() {
     setSelectedTransactions([]);
   };
 
-  // Handle schedule modal close
-  const handleScheduleModalClose = () => {
-    setIsScheduleModalOpen(false);
+  // Handle schedule view modal close
+  const handleScheduleViewModalClose = () => {
+    setIsScheduleViewModalOpen(false);
     setSelectedScheduleItems([]);
+  };
+  
+  // Handle schedule edit modal close
+  const handleScheduleEditModalClose = () => {
+    setIsScheduleEditModalOpen(false);
+    setSelectedScheduleItem(null);
+  };
+  
+  // Handle day total modal close
+  const handleDayTotalModalClose = () => {
+    setIsDayTotalModalOpen(false);
+    setSelectedDayTotalData(null);
   };
 
   // Loading state
@@ -253,8 +317,8 @@ export default function CalendarPage() {
                 cards={cards}
                 onDateClick={handleDateClick}
                 onTransactionClick={handleTransactionClick}
-                onTransactionViewClick={handleTransactionViewClick}
-                onScheduleViewClick={handleScheduleViewClick}
+                onTransactionViewClick={handleTransactionViewClickWithDate}
+                onScheduleViewClick={handleScheduleViewClickWithDate}
                 onMonthChange={handleMonthChange}
               />
             )}
@@ -289,13 +353,44 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Schedule modal */}
-      {isScheduleModalOpen && selectedDate && selectedScheduleItems.length > 0 && (
-        <ScheduleModal
-          isOpen={isScheduleModalOpen}
-          onClose={handleScheduleModalClose}
+      {/* Schedule view modal */}
+      {isScheduleViewModalOpen && selectedDate && selectedScheduleItems.length > 0 && (
+        <ScheduleViewModal
+          isOpen={isScheduleViewModalOpen}
+          onClose={handleScheduleViewModalClose}
+          onScheduleClick={handleScheduleClick}
           selectedDate={selectedDate}
           scheduleItems={selectedScheduleItems}
+          banks={banks}
+          cards={cards}
+        />
+      )}
+
+      {/* Schedule edit modal */}
+      {isScheduleEditModalOpen && selectedScheduleItem && (
+        <ScheduleEditModal
+          isOpen={isScheduleEditModalOpen}
+          onClose={handleScheduleEditModalClose}
+          onSave={handleScheduleSave}
+          onDelete={handleScheduleDelete}
+          scheduleItem={selectedScheduleItem}
+          banks={banks}
+          cards={cards}
+          isLoading={isLoading}
+        />
+      )}
+
+      {/* Day total modal */}
+      {isDayTotalModalOpen && selectedDate && selectedDayTotalData && (
+        <DayTotalModal
+          isOpen={isDayTotalModalOpen}
+          onClose={handleDayTotalModalClose}
+          onTransactionClick={handleTransactionClick}
+          onScheduleClick={handleScheduleClick}
+          onViewTransactions={handleTransactionViewClick}
+          onViewSchedules={handleScheduleViewClick}
+          selectedDate={selectedDate}
+          dayTotalData={selectedDayTotalData}
           banks={banks}
           cards={cards}
         />
