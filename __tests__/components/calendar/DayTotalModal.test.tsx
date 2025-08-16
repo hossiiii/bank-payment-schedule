@@ -97,12 +97,16 @@ describe('DayTotalModal', () => {
   const mockDayTotalData: DayTotalData = {
     date: '2024-02-15',
     totalAmount: 50840,
+    transactionTotal: 45840, // 取引合計: 15,000 + 22,840 + 8,000
+    scheduleTotal: 5000, // 引落予定合計: 5,000
     transactionCount: 3,
     scheduleCount: 1,
     bankGroups: [],
     transactions: mockTransactions,
     scheduleItems: mockScheduleItems,
-    hasData: true
+    hasData: true,
+    hasTransactions: true,
+    hasSchedule: true
   };
 
   const defaultProps = {
@@ -125,7 +129,11 @@ describe('DayTotalModal', () => {
       
       // 日付表示は複数の要素に分かれている可能性があるので、部分的に確認
       expect(screen.getByText('2024年2月15日')).toBeInTheDocument();
+      expect(screen.getByText('取引合計:')).toBeInTheDocument();
+      expect(screen.getAllByText('￥45,840').length).toBeGreaterThan(0);
       expect(screen.getByText('引落予定合計:')).toBeInTheDocument();
+      expect(screen.getAllByText('￥5,000').length).toBeGreaterThan(0);
+      expect(screen.getByText('総合計:')).toBeInTheDocument();
       expect(screen.getByText('￥50,840')).toBeInTheDocument();
     });
 
@@ -165,18 +173,50 @@ describe('DayTotalModal', () => {
     it('銀行別にグループ化して表示されること', () => {
       render(<DayTotalModal {...defaultProps} />);
       
-      expect(screen.getByText('SBIネット銀行')).toBeInTheDocument();
-      expect(screen.getByText('りそな銀行')).toBeInTheDocument();
+      const sbiElements = screen.getAllByText('SBIネット銀行');
+      const risonaElements = screen.getAllByText('りそな銀行');
+      
+      expect(sbiElements.length).toBeGreaterThan(0);
+      expect(risonaElements.length).toBeGreaterThan(0);
     });
 
     it('銀行ごとの合計金額が正しく表示されること', () => {
       render(<DayTotalModal {...defaultProps} />);
       
-      // SBIネット銀行: PayPayカード(15,000円) + 銀行引落(8,000円) + スケジュール(5,000円) = 28,000円
-      expect(screen.getAllByText('￥28,000').length).toBeGreaterThan(0);
+      // SBIネット銀行: 取引データ PayPayカード(15,000円) + 銀行引落(8,000円) = 23,000円
+      expect(screen.getAllByText('￥23,000').length).toBeGreaterThan(0);
       
       // りそな銀行: 楽天カード(22,840円) = 22,840円 (重複表示があるため getAllByText を使用)
       expect(screen.getAllByText('￥22,840').length).toBeGreaterThan(0);
+      
+      // SBIネット銀行の引落予定: 5,000円
+      expect(screen.getAllByText('￥5,000').length).toBeGreaterThan(0);
+    });
+
+    it('取引データと引落予定データが分離表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      // 取引データセクション
+      expect(screen.getByText('取引データ (3件)')).toBeInTheDocument();
+      expect(screen.getByText('実際に行った支払い取引:')).toBeInTheDocument();
+      
+      // 引落予定データセクション
+      expect(screen.getByText('引落予定 (1件)')).toBeInTheDocument();
+      expect(screen.getByText('予定されている引落し:')).toBeInTheDocument();
+    });
+
+    it('取引データに「取引」バッジが表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      const transactionBadges = screen.getAllByText('取引');
+      expect(transactionBadges.length).toBe(3); // 3つのトランザクション分
+    });
+
+    it('引落予定データに「予定」バッジが表示されること', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      const scheduleBadges = screen.getAllByText('予定');
+      expect(scheduleBadges.length).toBe(1); // 1つのスケジュール分
     });
   });
 
@@ -279,40 +319,46 @@ describe('DayTotalModal', () => {
     it('同じ銀行のカードと銀行引落が正しくグループ化されること', () => {
       render(<DayTotalModal {...defaultProps} />);
       
-      // SBIネット銀行のグループに PayPayカードと自動銀行振替があることを確認
-      const sbiSection = screen.getByText('SBIネット銀行').closest('div')!;
+      // SBIネット銀行の取引データとスケジュールデータをそれぞれ確認
+      expect(screen.getByText('PayPayカード')).toBeInTheDocument();
+      expect(screen.getAllByText('自動銀行振替').length).toBeGreaterThan(0);
       
-      // PayPayカードと自動銀行振替が同じグループにあるか確認
-      expect(sbiSection.textContent).toContain('PayPayカード');
-      expect(sbiSection.textContent).toContain('自動銀行振替');
+      // 両方のセクションにSBIネット銀行があることを確認
+      const sbiElements = screen.getAllByText('SBIネット銀行');
+      expect(sbiElements.length).toBeGreaterThan(0);
     });
 
     it('異なる銀行のカードが別々のグループに分かれること', () => {
       render(<DayTotalModal {...defaultProps} />);
       
-      const sbiSection = screen.getByText('SBIネット銀行').closest('div')!;
-      const risonaSection = screen.getByText('りそな銀行').closest('div')!;
-      
       // SBIにはPayPayカードがあり、りそなには楽天カードがある
-      expect(sbiSection.textContent).toContain('PayPayカード');
-      expect(sbiSection.textContent).not.toContain('楽天カード');
+      expect(screen.getByText('PayPayカード')).toBeInTheDocument();
+      expect(screen.getByText('楽天カード')).toBeInTheDocument();
       
-      expect(risonaSection.textContent).toContain('楽天カード');
-      expect(risonaSection.textContent).not.toContain('PayPayカード');
+      // 両方の銀行が表示されていることを確認
+      const sbiElements = screen.getAllByText('SBIネット銀行');
+      const risonaElements = screen.getAllByText('りそな銀行');
+      
+      expect(sbiElements.length).toBeGreaterThan(0);
+      expect(risonaElements.length).toBeGreaterThan(0);
     });
   });
 
   describe('エッジケース', () => {
-    it('引落予定がない日の表示', () => {
+    it('データがない日の表示', () => {
       const emptyDayTotalData: DayTotalData = {
         date: '2024-02-20',
         totalAmount: 0,
+        transactionTotal: 0,
+        scheduleTotal: 0,
         transactionCount: 0,
         scheduleCount: 0,
         bankGroups: [],
         transactions: [],
         scheduleItems: [],
-        hasData: false
+        hasData: false,
+        hasTransactions: false,
+        hasSchedule: false
       };
 
       render(<DayTotalModal 
@@ -321,7 +367,63 @@ describe('DayTotalModal', () => {
         selectedDate={new Date(2024, 1, 20)}
       />);
       
-      expect(screen.getByText('この日の引落予定はありません')).toBeInTheDocument();
+      expect(screen.getByText('この日にはデータがありません')).toBeInTheDocument();
+    });
+
+    it('取引データのみの日の表示', () => {
+      const transactionOnlyData: DayTotalData = {
+        date: '2024-02-25',
+        totalAmount: 15000,
+        transactionTotal: 15000,
+        scheduleTotal: 0,
+        transactionCount: 1,
+        scheduleCount: 0,
+        bankGroups: [],
+        transactions: [mockTransactions[0]!],
+        scheduleItems: [],
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: false
+      };
+
+      render(<DayTotalModal 
+        {...defaultProps} 
+        dayTotalData={transactionOnlyData}
+        selectedDate={new Date(2024, 1, 25)}
+      />);
+      
+      expect(screen.getByText('取引データ (1件)')).toBeInTheDocument();
+      expect(screen.queryByText('引落予定 (')).not.toBeInTheDocument();
+      expect(screen.getByText('取引合計:')).toBeInTheDocument();
+      expect(screen.queryByText('引落予定合計:')).not.toBeInTheDocument();
+    });
+
+    it('引落予定データのみの日の表示', () => {
+      const scheduleOnlyData: DayTotalData = {
+        date: '2024-02-28',
+        totalAmount: 5000,
+        transactionTotal: 0,
+        scheduleTotal: 5000,
+        transactionCount: 0,
+        scheduleCount: 1,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: mockScheduleItems,
+        hasData: true,
+        hasTransactions: false,
+        hasSchedule: true
+      };
+
+      render(<DayTotalModal 
+        {...defaultProps} 
+        dayTotalData={scheduleOnlyData}
+        selectedDate={new Date(2024, 1, 28)}
+      />);
+      
+      expect(screen.getByText('引落予定 (1件)')).toBeInTheDocument();
+      expect(screen.queryByText('取引データ (')).not.toBeInTheDocument();
+      expect(screen.getByText('引落予定合計:')).toBeInTheDocument();
+      expect(screen.queryByText('取引合計:')).not.toBeInTheDocument();
     });
 
     it('店舗名がない取引の表示', () => {
@@ -340,16 +442,84 @@ describe('DayTotalModal', () => {
       const modifiedDayTotalData: DayTotalData = {
         ...mockDayTotalData,
         totalAmount: 1000,
+        transactionTotal: 1000,
+        scheduleTotal: 0,
         transactionCount: 1,
         scheduleCount: 0,
         transactions: [transactionWithoutStore],
-        scheduleItems: []
+        scheduleItems: [],
+        hasTransactions: true,
+        hasSchedule: false
       };
 
       render(<DayTotalModal {...defaultProps} dayTotalData={modifiedDayTotalData} />);
       
       expect(screen.getByText('PayPayカード')).toBeInTheDocument();
       expect(screen.getAllByText('￥1,000').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('新機能の色分け表示とクリック動作', () => {
+    it('取引データセクションが緑色のボーダーで表示されること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      const transactionSection = container.querySelector('.border-l-4.border-green-500');
+      expect(transactionSection).toBeInTheDocument();
+      expect(transactionSection?.textContent).toContain('取引データ');
+    });
+
+    it('引落予定セクションが青色のボーダーで表示されること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      const scheduleSection = container.querySelector('.border-l-4.border-blue-500');
+      expect(scheduleSection).toBeInTheDocument();
+      expect(scheduleSection?.textContent).toContain('引落予定');
+    });
+
+    it('取引データのアイテムが緑色背景で表示されること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      const transactionItems = container.querySelectorAll('.border-green-200');
+      expect(transactionItems.length).toBeGreaterThan(0);
+    });
+
+    it('引落予定データのアイテムが青色背景で表示されること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      const scheduleItems = container.querySelectorAll('.border-blue-200');
+      expect(scheduleItems.length).toBeGreaterThan(0);
+    });
+
+    it('取引データアイテムのみがクリック可能であること', () => {
+      const { container } = render(<DayTotalModal {...defaultProps} />);
+      
+      // 取引データの矢印アイコンを確認
+      const transactionArrows = container.querySelectorAll('svg[viewBox="0 0 24 24"] path[d="M9 5l7 7-7 7"]');
+      expect(transactionArrows.length).toBe(3); // 3つのトランザクション分
+      
+      // 引落予定データにはクリック要素がないことを確認
+      const scheduleElements = Array.from(container.querySelectorAll('.border-blue-200 .px-4.py-3'));
+      scheduleElements.forEach(element => {
+        const arrows = element.querySelectorAll('svg[viewBox="0 0 24 24"] path[d="M9 5l7 7-7 7"]');
+        expect(arrows.length).toBe(0);
+      });
+    });
+
+    it('スケジュールアイテムがクリックできないため矢印が表示されないこと', () => {
+      render(<DayTotalModal {...defaultProps} />);
+      
+      // 「予定」バッジを持つ要素を探す
+      const scheduleBadges = screen.getAllByText('予定');
+      expect(scheduleBadges.length).toBe(1);
+      
+      // その親要素に矢印アイコンがないことを確認
+      scheduleBadges.forEach(badge => {
+        const parentElement = badge.closest('.px-4.py-3');
+        if (parentElement) {
+          const arrows = parentElement.querySelectorAll('svg[viewBox="0 0 24 24"] path[d="M9 5l7 7-7 7"]');
+          expect(arrows.length).toBe(0);
+        }
+      });
     });
   });
 });

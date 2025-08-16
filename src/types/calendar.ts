@@ -45,13 +45,18 @@ export interface PaymentItem {
  */
 export interface DayTotalData {
   date: string; // ISO date string (YYYY-MM-DD)
-  totalAmount: number;
+  totalAmount: number; // 総合計（互換性のため保持）
   transactionCount: number;
   scheduleCount: number;
+  // 分離されたデータ
+  transactionTotal: number; // 取引合計
+  scheduleTotal: number; // 引落予定合計
   bankGroups: BankGroup[];
   transactions: Transaction[];
   scheduleItems: any[]; // From schedule data
   hasData: boolean;
+  hasTransactions: boolean; // 取引データがあるかどうか
+  hasSchedule: boolean; // 引落予定データがあるかどうか
 }
 
 /**

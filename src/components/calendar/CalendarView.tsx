@@ -97,18 +97,24 @@ export function CalendarView({
           totalAmount: 0,
           transactionCount: 0,
           scheduleCount: 0,
+          transactionTotal: 0,
+          scheduleTotal: 0,
           bankGroups: [],
           transactions: [],
           scheduleItems: [],
-          hasData: false
+          hasData: false,
+          hasTransactions: false,
+          hasSchedule: false
         });
       }
       
       const dayTotal = totals.get(dateKey)!;
+      dayTotal.transactionTotal += transaction.amount;
       dayTotal.totalAmount += transaction.amount;
       dayTotal.transactionCount++;
       dayTotal.transactions.push(transaction);
       dayTotal.hasData = true;
+      dayTotal.hasTransactions = true;
     });
     
     // Process schedule items
@@ -122,18 +128,24 @@ export function CalendarView({
             totalAmount: 0,
             transactionCount: 0,
             scheduleCount: 0,
+            transactionTotal: 0,
+            scheduleTotal: 0,
             bankGroups: [],
             transactions: [],
             scheduleItems: [],
-            hasData: false
+            hasData: false,
+            hasTransactions: false,
+            hasSchedule: false
           });
         }
         
         const dayTotal = totals.get(dateKey)!;
+        dayTotal.scheduleTotal += item.amount;
         dayTotal.totalAmount += item.amount;
         dayTotal.scheduleCount++;
         dayTotal.scheduleItems.push(item);
         dayTotal.hasData = true;
+        dayTotal.hasSchedule = true;
       });
     }
     
@@ -244,20 +256,45 @@ export function CalendarView({
               <div className="flex-1 space-y-1">
                 {(() => {
                   const dayTotal = calculateDayTotals.get(dateKey);
-                  if (!dayTotal || dayTotal.totalAmount === 0) return null;
+                  if (!dayTotal || !dayTotal.hasData) return null;
                   
-                  return (
-                    <div 
-                      className="px-2 py-1 text-xs rounded cursor-pointer bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-300 font-semibold"
-                      onClick={(e) => handleDayTotalClick(calendarDay, e)}
-                      title={`引落予定合計: ${formatAmount(dayTotal.totalAmount)} (取引${dayTotal.transactionCount}件、予定${dayTotal.scheduleCount}件)`}
-                    >
-                      <div className="text-center">
-                        <div className="text-xs font-bold">引落予定</div>
-                        <div className="text-sm font-bold">{formatAmount(dayTotal.totalAmount)}</div>
+                  const items = [];
+                  
+                  // 取引データがある場合
+                  if (dayTotal.hasTransactions && dayTotal.transactionTotal > 0) {
+                    items.push(
+                      <div 
+                        key="transaction"
+                        className="px-2 py-1 text-xs rounded cursor-pointer bg-green-100 text-green-900 hover:bg-green-200 border border-green-300 font-semibold"
+                        onClick={(e) => handleDayTotalClick(calendarDay, e)}
+                        title={`取引合計: ${formatAmount(dayTotal.transactionTotal)} (取引${dayTotal.transactionCount}件)`}
+                      >
+                        <div className="text-center">
+                          <div className="text-xs font-bold">取引合計</div>
+                          <div className="text-sm font-bold">{formatAmount(dayTotal.transactionTotal)}</div>
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
+                  }
+                  
+                  // 引落予定データがある場合
+                  if (dayTotal.hasSchedule && dayTotal.scheduleTotal > 0) {
+                    items.push(
+                      <div 
+                        key="schedule"
+                        className="px-2 py-1 text-xs rounded cursor-pointer bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-300 font-semibold"
+                        onClick={(e) => handleDayTotalClick(calendarDay, e)}
+                        title={`引落予定合計: ${formatAmount(dayTotal.scheduleTotal)} (予定${dayTotal.scheduleCount}件)`}
+                      >
+                        <div className="text-center">
+                          <div className="text-xs font-bold">引落予定</div>
+                          <div className="text-sm font-bold">{formatAmount(dayTotal.scheduleTotal)}</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  return items;
                 })()}
               </div>
             </div>
@@ -268,6 +305,10 @@ export function CalendarView({
       {/* Legend */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="flex flex-wrap gap-4 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-100 border border-green-300 rounded" />
+            <span className="text-gray-600">取引合計</span>
+          </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded" />
             <span className="text-gray-600">引落予定</span>
