@@ -72,7 +72,10 @@ export function filterTransactionsForMonth(
   month: number
 ): Transaction[] {
   const startDate = createJapanDate(year, month, 1);
-  const endDate = createJapanDate(year, month + 1, 0); // Last day of month
+  // 月末日を正しく取得: 次の月の1日から1日引く
+  const endDate = new Date(createJapanDate(year, month + 1, 1));
+  endDate.setDate(endDate.getDate() - 1);
+  endDate.setHours(23, 59, 59, 999); // 月末日の最後の時刻に設定
   
   return transactions.filter(tx => {
     const scheduledDate = new Date(tx.scheduledPayDate);
