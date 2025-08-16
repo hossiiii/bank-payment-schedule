@@ -100,12 +100,16 @@ export function CalendarView({
           transactionCount: 0,
           scheduleCount: 0,
           transactionTotal: 0,
+          cardTransactionTotal: 0,
+          bankTransactionTotal: 0,
           scheduleTotal: 0,
           bankGroups: [],
           transactions: [],
           scheduleItems: [],
           hasData: false,
           hasTransactions: false,
+          hasCardTransactions: false,
+          hasBankTransactions: false,
           hasSchedule: false
         });
       }
@@ -117,6 +121,15 @@ export function CalendarView({
       dayTotal.transactions.push(transaction);
       dayTotal.hasData = true;
       dayTotal.hasTransactions = true;
+      
+      // 支払い方法別の集計
+      if (transaction.paymentType === 'card') {
+        dayTotal.cardTransactionTotal += transaction.amount;
+        dayTotal.hasCardTransactions = true;
+      } else if (transaction.paymentType === 'bank') {
+        dayTotal.bankTransactionTotal += transaction.amount;
+        dayTotal.hasBankTransactions = true;
+      }
     });
     
     // Process schedule items
@@ -131,12 +144,16 @@ export function CalendarView({
             transactionCount: 0,
             scheduleCount: 0,
             transactionTotal: 0,
+            cardTransactionTotal: 0,
+            bankTransactionTotal: 0,
             scheduleTotal: 0,
             bankGroups: [],
             transactions: [],
             scheduleItems: [],
             hasData: false,
             hasTransactions: false,
+            hasCardTransactions: false,
+            hasBankTransactions: false,
             hasSchedule: false
           });
         }
@@ -275,18 +292,18 @@ export function CalendarView({
                   
                   const items = [];
                   
-                  // 取引データがある場合
-                  if (dayTotal.hasTransactions && dayTotal.transactionTotal > 0) {
+                  // カード払い取引データがある場合のみ表示（銀行引落は表示しない）
+                  if (dayTotal.hasCardTransactions && dayTotal.cardTransactionTotal > 0) {
                     items.push(
                       <div 
                         key="transaction"
                         className="px-2 py-1 text-xs rounded cursor-pointer bg-green-100 text-green-900 hover:bg-green-200 border border-green-300 font-semibold"
                         onClick={(e) => handleTransactionClick(calendarDay, e)}
-                        title={`取引合計: ${formatAmount(dayTotal.transactionTotal)} (取引${dayTotal.transactionCount}件)`}
+                        title={`カード取引合計: ${formatAmount(dayTotal.cardTransactionTotal)} (カード取引のみ)`}
                       >
                         <div className="text-center">
                           <div className="text-xs font-bold">取引合計</div>
-                          <div className="text-sm font-bold">{formatAmount(dayTotal.transactionTotal)}</div>
+                          <div className="text-sm font-bold">{formatAmount(dayTotal.cardTransactionTotal)}</div>
                         </div>
                       </div>
                     );

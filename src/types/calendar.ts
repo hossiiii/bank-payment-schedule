@@ -49,13 +49,17 @@ export interface DayTotalData {
   transactionCount: number;
   scheduleCount: number;
   // 分離されたデータ
-  transactionTotal: number; // 取引合計
+  transactionTotal: number; // 取引合計（全取引）
+  cardTransactionTotal: number; // カード払い取引合計のみ
+  bankTransactionTotal: number; // 銀行引落取引合計のみ
   scheduleTotal: number; // 引落予定合計
   bankGroups: BankGroup[];
   transactions: Transaction[];
   scheduleItems: any[]; // From schedule data
   hasData: boolean;
   hasTransactions: boolean; // 取引データがあるかどうか
+  hasCardTransactions: boolean; // カード払い取引データがあるかどうか
+  hasBankTransactions: boolean; // 銀行引落取引データがあるかどうか
   hasSchedule: boolean; // 引落予定データがあるかどうか
 }
 
