@@ -1,4 +1,4 @@
-import { Transaction, ScheduleItem } from './database';
+import { Transaction, ScheduleItem, Bank, Card } from './database';
 
 // Calendar-specific type definitions for total amount display
 
@@ -75,4 +75,133 @@ export interface CalendarTotalsResult {
   totals: Map<string, DayTotalData>;
   monthTotal: number;
   dayCount: number;
+}
+
+/**
+ * 引落予定編集用のフォームデータ型
+ */
+export interface ScheduleEditFormData {
+  amount: number;
+  storeName?: string;
+  usage?: string;
+  memo?: string;
+}
+
+/**
+ * 引落予定編集用のイベントハンドラ型
+ */
+export interface ScheduleEditHandlers {
+  onScheduleClick: (scheduleItem: ScheduleItem) => void;
+  onScheduleEdit: (scheduleId: string, updates: Partial<ScheduleItem>) => Promise<void>;
+  onScheduleDelete?: (scheduleId: string) => Promise<void>;
+}
+
+/**
+ * 引落予定表示用の銀行グループ型
+ */
+export interface ScheduleBankGroup {
+  bankId: string;
+  bankName: string;
+  totalAmount: number;
+  scheduleCount: number;
+  items: ScheduleDisplayItem[];
+}
+
+/**
+ * 引落予定表示項目型
+ */
+export interface ScheduleDisplayItem {
+  id: string;
+  amount: number;
+  paymentType: 'card' | 'bank';
+  bankName: string;
+  cardName: string;
+  storeName?: string;
+  usage?: string;
+  memo?: string;
+  scheduleItem: ScheduleItem;
+}
+
+/**
+ * 引落予定モーダルの状態管理型
+ */
+export interface ScheduleModalState {
+  view: {
+    isOpen: boolean;
+    scheduleItems: ScheduleItem[];
+    selectedDate: Date | null;
+  };
+  edit: {
+    isOpen: boolean;
+    scheduleItem: ScheduleItem | null;
+  };
+}
+
+/**
+ * モーダル表示状態管理型
+ */
+export interface ModalStates {
+  transactionView: boolean;
+  scheduleView: boolean;
+  transactionEdit: boolean;
+  scheduleEdit: boolean;
+  dayTotal: boolean;
+}
+
+/**
+ * モーダル管理のハンドラ型
+ */
+export interface ModalHandlers {
+  openTransactionView: (transactions: Transaction[], selectedDate: Date) => void;
+  openScheduleView: (scheduleItems: ScheduleItem[], selectedDate: Date) => void;
+  openTransactionEdit: (transaction?: Transaction) => void;
+  openScheduleEdit: (scheduleItem: ScheduleItem) => void;
+  openDayTotal: (dayTotalData: DayTotalData, selectedDate: Date) => void;
+  closeAll: () => void;
+}
+
+/**
+ * 統合モーダル管理のコンテキスト型
+ */
+export interface CalendarModalContext {
+  // 状態
+  modalStates: ModalStates;
+  selectedDate: Date | null;
+  selectedTransactions: Transaction[];
+  selectedScheduleItems: ScheduleItem[];
+  selectedTransaction: Transaction | null;
+  selectedScheduleItem: ScheduleItem | null;
+  selectedDayTotalData: DayTotalData | null;
+  
+  // ハンドラ
+  handlers: ModalHandlers;
+  
+  // 共通データ
+  banks: Bank[];
+  cards: Card[];
+  
+  // データ操作
+  onTransactionSave: (transaction: any) => Promise<void>;
+  onTransactionDelete: (transactionId: string) => Promise<void>;
+  onScheduleSave: (scheduleId: string, updates: Partial<ScheduleItem>) => Promise<void>;
+  onScheduleDelete: (scheduleId: string) => Promise<void>;
+}
+
+/**
+ * エラーハンドリング型
+ */
+export interface CalendarError {
+  type: 'validation' | 'network' | 'permission' | 'unknown';
+  message: string;
+  field?: string;
+  details?: unknown;
+}
+
+/**
+ * 操作結果型
+ */
+export interface CalendarOperationResult<T = void> {
+  success: boolean;
+  data?: T;
+  error?: CalendarError;
 }
