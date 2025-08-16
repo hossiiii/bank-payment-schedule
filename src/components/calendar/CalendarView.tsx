@@ -13,6 +13,7 @@ import {
 } from '@/lib/utils/dateUtils';
 import { formatAmount } from '@/lib/utils/validation';
 import { Transaction, MonthlySchedule, Bank, Card } from '@/types/database';
+import { DayTotalData } from '@/types/calendar';
 import { useSwipeNavigation } from '@/lib/hooks/useSwipeNavigation';
 
 export interface CalendarViewProps {
@@ -24,6 +25,7 @@ export interface CalendarViewProps {
   cards: Card[];
   onDateClick: (date: Date) => void;
   onTransactionClick: (transaction: Transaction) => void;
+  onDayTotalClick?: (date: Date, dayTotalData: DayTotalData) => void;
   onMonthChange?: (year: number, month: number) => void;
   className?: string;
 }
@@ -33,10 +35,11 @@ export function CalendarView({
   month,
   transactions,
   schedule,
-  banks,
-  cards,
+  banks: _banks,
+  cards: _cards,
   onDateClick,
-  onTransactionClick,
+  onTransactionClick: _onTransactionClick,
+  onDayTotalClick,
   onMonthChange,
   className
 }: CalendarViewProps) {
@@ -78,45 +81,64 @@ export function CalendarView({
     return createCalendarGrid(year, month);
   }, [year, month]);
 
-  // Group transactions by date
-  const transactionsByDate = useMemo(() => {
-    const grouped = new Map<string, Transaction[]>();
+  // Removed transactionsByDate and scheduleByDate as we now use calculateDayTotals
+
+  // Calculate day totals for new display
+  const calculateDayTotals = useMemo(() => {
+    const totals = new Map<string, DayTotalData>();
     
+    // Process transactions
     transactions.forEach(transaction => {
       const dateKey = formatDateISO(new Date(transaction.date));
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, []);
+      
+      if (!totals.has(dateKey)) {
+        totals.set(dateKey, {
+          date: dateKey,
+          totalAmount: 0,
+          transactionCount: 0,
+          scheduleCount: 0,
+          bankGroups: [],
+          transactions: [],
+          scheduleItems: [],
+          hasData: false
+        });
       }
-      grouped.get(dateKey)!.push(transaction);
+      
+      const dayTotal = totals.get(dateKey)!;
+      dayTotal.totalAmount += transaction.amount;
+      dayTotal.transactionCount++;
+      dayTotal.transactions.push(transaction);
+      dayTotal.hasData = true;
     });
     
-    return grouped;
-  }, [transactions]);
-
-  // Group schedule by date
-  const scheduleByDate = useMemo(() => {
-    if (!schedule) return new Map<string, any[]>();
-    
-    const grouped = new Map<string, any[]>();
-    
-    // Add payment dates from schedule
-    schedule.items.forEach(item => {
-      const dateKey = formatDateISO(item.date);
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, []);
-      }
-      grouped.get(dateKey)!.push({
-        type: 'payment',
-        bankName: item.bankName,
-        cardName: item.cardName,
-        paymentType: item.paymentType,
-        amount: item.amount,
-        storeName: item.storeName
+    // Process schedule items
+    if (schedule) {
+      schedule.items.forEach(item => {
+        const dateKey = formatDateISO(item.date);
+        
+        if (!totals.has(dateKey)) {
+          totals.set(dateKey, {
+            date: dateKey,
+            totalAmount: 0,
+            transactionCount: 0,
+            scheduleCount: 0,
+            bankGroups: [],
+            transactions: [],
+            scheduleItems: [],
+            hasData: false
+          });
+        }
+        
+        const dayTotal = totals.get(dateKey)!;
+        dayTotal.totalAmount += item.amount;
+        dayTotal.scheduleCount++;
+        dayTotal.scheduleItems.push(item);
+        dayTotal.hasData = true;
       });
-    });
+    }
     
-    return grouped;
-  }, [schedule]);
+    return totals;
+  }, [transactions, schedule]);
 
   const handleDateClick = (calendarDay: CalendarDay) => {
     if (!calendarDay.date) return;
@@ -125,30 +147,20 @@ export function CalendarView({
     onDateClick(calendarDay.date);
   };
 
-  const handleTransactionClick = (e: React.MouseEvent, transaction: Transaction) => {
-    e.stopPropagation();
-    e.preventDefault(); // Prevent any potential conflicts with pointer events
-    onTransactionClick(transaction);
-  };
-
-  // Helper function to get payment method name
-  const getPaymentMethodName = (transaction: Transaction): string => {
-    if (transaction.paymentType === 'card' && transaction.cardId) {
-      const card = cards.find(c => c.id === transaction.cardId);
-      return card?.name || 'カード';
-    } else if (transaction.paymentType === 'bank' && transaction.bankId) {
-      const bank = banks.find(b => b.id === transaction.bankId);
-      return bank?.name || '銀行';
+  const handleDayTotalClick = (calendarDay: CalendarDay, e: React.MouseEvent) => {
+    e.stopPropagation(); // 日付クリックとは別のイベントとして処理
+    
+    if (!calendarDay.date || !onDayTotalClick) return;
+    
+    const dateKey = formatDateISO(calendarDay.date);
+    const dayTotal = calculateDayTotals.get(dateKey);
+    
+    if (dayTotal && dayTotal.hasData) {
+      onDayTotalClick(calendarDay.date, dayTotal);
     }
-    return transaction.paymentType === 'card' ? 'カード' : '銀行';
   };
 
-  // Helper function to format transaction display name
-  const getTransactionDisplayName = (transaction: Transaction): string => {
-    const storeName = transaction.storeName || '取引';
-    const paymentMethod = getPaymentMethodName(transaction);
-    return `${storeName}（${paymentMethod}）`;
-  };
+  // Transaction click handler removed as we now only handle date clicks for totals
 
   const weekdayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -188,8 +200,7 @@ export function CalendarView({
           }
 
           const dateKey = formatDateISO(calendarDay.date);
-          const dayTransactions = transactionsByDate.get(dateKey) || [];
-          const daySchedule = scheduleByDate.get(dateKey) || [];
+          // dayTransactions and daySchedule variables removed as we now use calculateDayTotals
           const isSelected = selectedDate && isSameDay(calendarDay.date, selectedDate);
           const dayOfWeek = calendarDay.date.getDay();
           const holidayName = calendarDay.isHoliday ? getJapaneseHolidayName(calendarDay.date) : null;
@@ -229,54 +240,25 @@ export function CalendarView({
                 )}
               </div>
 
-              {/* Transactions */}
+              {/* Payment Total Display */}
               <div className="flex-1 space-y-1">
-                {dayTransactions.slice(0, 2).map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    onClick={(e) => handleTransactionClick(e, transaction)}
-                    className={cn(
-                      'px-1 py-0.5 text-xs rounded truncate',
-                      'bg-green-100 text-green-800 hover:bg-green-200',
-                      'border border-green-200'
-                    )}
-                    title={`${getTransactionDisplayName(transaction)}: ${formatAmount(transaction.amount)}`}
-                  >
-                    <div className="truncate">
-                      {getTransactionDisplayName(transaction)}
+                {(() => {
+                  const dayTotal = calculateDayTotals.get(dateKey);
+                  if (!dayTotal || dayTotal.totalAmount === 0) return null;
+                  
+                  return (
+                    <div 
+                      className="px-2 py-1 text-xs rounded cursor-pointer bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-300 font-semibold"
+                      onClick={(e) => handleDayTotalClick(calendarDay, e)}
+                      title={`引落予定合計: ${formatAmount(dayTotal.totalAmount)} (取引${dayTotal.transactionCount}件、予定${dayTotal.scheduleCount}件)`}
+                    >
+                      <div className="text-center">
+                        <div className="text-xs font-bold">引落予定</div>
+                        <div className="text-sm font-bold">{formatAmount(dayTotal.totalAmount)}</div>
+                      </div>
                     </div>
-                    <div className="text-xs font-medium">
-                      {formatAmount(transaction.amount)}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Payment schedule items */}
-                {daySchedule.slice(0, 2 - dayTransactions.slice(0, 2).length).map((item, scheduleIndex) => (
-                  <div
-                    key={scheduleIndex}
-                    className={cn(
-                      'px-1 py-0.5 text-xs rounded truncate',
-                      'bg-orange-100 text-orange-800',
-                      'border border-orange-200'
-                    )}
-                    title={`${item.paymentType === 'bank' ? '銀行引落' : item.cardName} - ${item.storeName || '支払い'}: ${formatAmount(item.amount)}`}
-                  >
-                    <div className="truncate">
-                      {item.paymentType === 'bank' ? '銀行引落' : item.cardName}
-                    </div>
-                    <div className="text-xs font-medium">
-                      {formatAmount(item.amount)}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Show more indicator */}
-                {(dayTransactions.length + daySchedule.length) > 2 && (
-                  <div className="text-xs text-gray-500 text-center">
-                    +{(dayTransactions.length + daySchedule.length) - 2} 件
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           );
@@ -287,12 +269,8 @@ export function CalendarView({
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded" />
-            <span className="text-gray-600">取引</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-orange-100 border border-orange-200 rounded" />
-            <span className="text-gray-600">支払い予定</span>
+            <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded" />
+            <span className="text-gray-600">引落予定</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-red-500 rounded-full" />
