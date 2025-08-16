@@ -171,25 +171,73 @@ describe('CalendarView', () => {
     });
   });
 
-  describe('引落予定表示機能', () => {
-    it('引落予定がある日に「引落予定 XX円」形式で表示されること', () => {
+  describe('分離表示機能（取引データと引落予定データ）', () => {
+    it('取引データがある日に「取引合計 XX円」形式で表示されること', () => {
       render(<CalendarView {...defaultProps} />);
       
-      // 15日には取引とスケジュールの合計42,840円が表示されるはず
-      const paymentElements = screen.getAllByText('引落予定');
-      expect(paymentElements.length).toBeGreaterThan(0);
-      expect(screen.getByText('￥42,840')).toBeInTheDocument();
+      // 15日には取引データ 37,840円（15,000 + 22,840）が表示されるはず
+      const transactionElements = screen.getAllByText('取引合計');
+      expect(transactionElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥37,840')).toBeInTheDocument();
     });
 
-    it('引落予定の合計金額が正確に計算されること', () => {
-      const { container } = render(<CalendarView {...defaultProps} />);
+    it('引落予定データがある日に「引落予定 XX円」形式で表示されること', () => {
+      render(<CalendarView {...defaultProps} />);
       
-      // データ: 15,000 + 22,840 + 5,000 = 42,840円
-      const totalElement = container.querySelector('[title*="引落予定合計: ￥42,840"]');
-      expect(totalElement).toBeInTheDocument();
+      // 15日には引落予定データ 5,000円が表示されるはず
+      const scheduleElements = screen.getAllByText('引落予定');
+      expect(scheduleElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥5,000')).toBeInTheDocument();
     });
 
-    it('引落予定がない日には何も表示されないこと', () => {
+    it('取引データと引落予定データが同じ日に両方表示されること', () => {
+      render(<CalendarView {...defaultProps} />);
+      
+      // 15日には両方のデータが表示される
+      const transactionElements = screen.getAllByText('取引合計');
+      const scheduleElements = screen.getAllByText('引落予定');
+      
+      expect(transactionElements.length).toBeGreaterThan(0);
+      expect(scheduleElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥37,840')).toBeInTheDocument(); // 取引合計
+      expect(screen.getByText('￥5,000')).toBeInTheDocument(); // 引落予定
+    });
+
+    it('取引データのみの日には取引合計のみ表示されること', () => {
+      const transactionOnlyProps = {
+        ...defaultProps,
+        schedule: { ...mockSchedule, items: [] }
+      };
+      
+      render(<CalendarView {...transactionOnlyProps} />);
+      
+      const transactionElements = screen.getAllByText('取引合計');
+      expect(transactionElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥37,840')).toBeInTheDocument();
+      // 引落予定は表示されない（凡例は除く）
+      const scheduleElements = screen.getAllByText('引落予定');
+      // 凡例のみなので1個のはず
+      expect(scheduleElements).toHaveLength(1);
+    });
+
+    it('引落予定データのみの日には引落予定のみ表示されること', () => {
+      const scheduleOnlyProps = {
+        ...defaultProps,
+        transactions: []
+      };
+      
+      render(<CalendarView {...scheduleOnlyProps} />);
+      
+      const scheduleElements = screen.getAllByText('引落予定');
+      expect(scheduleElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥5,000')).toBeInTheDocument();
+      // 取引合計は表示されない（凡例は除く）
+      const transactionElements = screen.getAllByText('取引合計');
+      // 凡例のみなので1個のはず
+      expect(transactionElements).toHaveLength(1);
+    });
+
+    it('データがない日には何も表示されないこと', () => {
       const emptyProps = {
         ...defaultProps,
         transactions: [],
@@ -198,56 +246,126 @@ describe('CalendarView', () => {
       
       render(<CalendarView {...emptyProps} />);
       
-      // カレンダー上の引落予定は表示されないが、凡例の引落予定は表示される
-      // 凡例のみであることを確認（金額表示がないことで判断）
-      expect(screen.queryByText(/\d+円/)).not.toBeInTheDocument();
+      // カレンダー上の取引・引落予定は表示されないが、凡例は表示される
+      // 金額表示がないことで判断
+      expect(screen.queryByText(/￥\d+/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('色分け表示とスタイリング', () => {
+    it('取引データが緑色背景で表示されること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // bg-green-100クラスを持つ要素を直接探す
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      expect(transactionElement).toBeTruthy();
+      expect(transactionElement).toHaveClass('bg-green-100', 'text-green-900', 'font-semibold');
     });
 
-    it('引落予定表示が青色背景と太文字でスタイリングされていること', () => {
+    it('引落予定データが青色背景で表示されること', () => {
       const { container } = render(<CalendarView {...defaultProps} />);
       
       // bg-blue-100クラスを持つ要素を直接探す
-      const blueElements = container.querySelectorAll('.bg-blue-100');
-      expect(blueElements.length).toBeGreaterThan(0);
-      
-      // 引落予定の文字列を含む要素を探す
-      const paymentElement = Array.from(blueElements).find(el => 
+      const blueElements = container.querySelectorAll('.bg-blue-100.text-blue-900');
+      const scheduleElement = Array.from(blueElements).find(el => 
         el.textContent?.includes('引落予定')
       );
-      expect(paymentElement).toBeTruthy();
-      expect(paymentElement).toHaveClass('bg-blue-100', 'text-blue-900', 'font-semibold');
+      expect(scheduleElement).toBeTruthy();
+      expect(scheduleElement).toHaveClass('bg-blue-100');
+      expect(scheduleElement).toHaveClass('text-blue-900');
+      expect(scheduleElement).toHaveClass('font-semibold');
+    });
+
+    it('取引データがクリック可能であること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      expect(transactionElement).toBeTruthy();
+      expect(transactionElement).toHaveClass('cursor-pointer');
+    });
+
+    it('引落予定データがクリック可能であること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      const blueElements = container.querySelectorAll('.bg-blue-100');
+      const scheduleElement = Array.from(blueElements).find(el => 
+        el.textContent?.includes('引落予定')
+      );
+      expect(scheduleElement).toBeTruthy();
+      expect(scheduleElement).toHaveClass('cursor-pointer');
     });
   });
 
   describe('DayTotalModal との連携', () => {
-    it('引落予定をクリックすると onDayTotalClick が適切なデータで呼ばれること', async () => {
+    it('取引データをクリックすると onDayTotalClick が適切なデータで呼ばれること', async () => {
       const onDayTotalClick = jest.fn();
       const { container } = render(<CalendarView {...defaultProps} onDayTotalClick={onDayTotalClick} />);
       
-      // bg-blue-100クラスを持つ要素を直接探す
-      const blueElements = container.querySelectorAll('.bg-blue-100');
-      const paymentElement = Array.from(blueElements).find(el => 
-        el.textContent?.includes('引落予定')
+      // bg-green-100クラスを持つ要素を直接探す
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
       );
-      expect(paymentElement).toBeTruthy();
+      expect(transactionElement).toBeTruthy();
       
-      fireEvent.click(paymentElement!);
+      fireEvent.click(transactionElement!);
       
       await waitFor(() => {
         expect(onDayTotalClick).toHaveBeenCalledWith(
           new Date(2024, 1, 15),
           expect.objectContaining({
             date: '2024-02-15',
+            transactionTotal: 37840,
+            scheduleTotal: 5000,
             totalAmount: 42840,
             transactionCount: 2,
             scheduleCount: 1,
-            hasData: true
+            hasData: true,
+            hasTransactions: true,
+            hasSchedule: true
           })
         );
       });
     });
 
-    it('引落予定クリックが日付クリックとは別のイベントとして処理されること', async () => {
+    it('引落予定をクリックすると onDayTotalClick が適切なデータで呼ばれること', async () => {
+      const onDayTotalClick = jest.fn();
+      const { container } = render(<CalendarView {...defaultProps} onDayTotalClick={onDayTotalClick} />);
+      
+      // bg-blue-100クラスを持つ要素を直接探す
+      const blueElements = container.querySelectorAll('.bg-blue-100');
+      const scheduleElement = Array.from(blueElements).find(el => 
+        el.textContent?.includes('引落予定')
+      );
+      expect(scheduleElement).toBeTruthy();
+      
+      fireEvent.click(scheduleElement!);
+      
+      await waitFor(() => {
+        expect(onDayTotalClick).toHaveBeenCalledWith(
+          new Date(2024, 1, 15),
+          expect.objectContaining({
+            date: '2024-02-15',
+            transactionTotal: 37840,
+            scheduleTotal: 5000,
+            totalAmount: 42840,
+            transactionCount: 2,
+            scheduleCount: 1,
+            hasData: true,
+            hasTransactions: true,
+            hasSchedule: true
+          })
+        );
+      });
+    });
+
+    it('データクリックが日付クリックとは別のイベントとして処理されること', async () => {
       const onDateClick = jest.fn();
       const onDayTotalClick = jest.fn();
       
@@ -258,13 +376,13 @@ describe('CalendarView', () => {
       />);
       
       // クリック可能な引落予定要素を探す（cursor-pointerクラス）
-      const clickableElements = container.querySelectorAll('.cursor-pointer');
-      const paymentElement = Array.from(clickableElements).find(el => 
-        el.textContent?.includes('引落予定') && el.textContent?.includes('￥42,840')
+      const blueElements = container.querySelectorAll('.bg-blue-100');
+      const scheduleElement = Array.from(blueElements).find(el => 
+        el.textContent?.includes('引落予定') && el.textContent?.includes('￥5,000')
       );
-      expect(paymentElement).toBeTruthy();
+      expect(scheduleElement).toBeTruthy();
       
-      fireEvent.click(paymentElement!);
+      fireEvent.click(scheduleElement!);
       
       await waitFor(() => {
         expect(onDayTotalClick).toHaveBeenCalled();
@@ -341,26 +459,40 @@ describe('CalendarView', () => {
   });
 
   describe('アクセシビリティ', () => {
-    it('引落予定にツールチップが表示されること', () => {
+    it('データにツールチップが表示されること', () => {
       const { container } = render(<CalendarView {...defaultProps} />);
       
-      // title属性を持つ要素を直接探す
-      const elementWithTitle = container.querySelector('[title*="引落予定合計"]');
-      expect(elementWithTitle).toBeTruthy();
-      expect(elementWithTitle).toHaveAttribute('title', expect.stringContaining('引落予定合計: ￥42,840'));
-      expect(elementWithTitle).toHaveAttribute('title', expect.stringContaining('取引2件、予定1件'));
+      // 取引合計のツールチップを確認
+      const transactionElement = container.querySelector('[title*="取引合計"]');
+      expect(transactionElement).toBeTruthy();
+      expect(transactionElement).toHaveAttribute('title', expect.stringContaining('取引合計: ￥37,840'));
+      expect(transactionElement).toHaveAttribute('title', expect.stringContaining('取引2件'));
+
+      // 引落予定のツールチップを確認
+      const scheduleElement = container.querySelector('[title*="引落予定合計"]');
+      expect(scheduleElement).toBeTruthy();
+      expect(scheduleElement).toHaveAttribute('title', expect.stringContaining('引落予定合計: ￥5,000'));
+      expect(scheduleElement).toHaveAttribute('title', expect.stringContaining('予定1件'));
     });
 
-    it('引落予定がクリック可能であることが分かること', () => {
+    it('データがクリック可能であることが分かること', () => {
       const { container } = render(<CalendarView {...defaultProps} />);
       
-      // bg-blue-100クラスを持つ要素を直接探す
+      // 取引合計がクリック可能
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      expect(transactionElement).toBeTruthy();
+      expect(transactionElement).toHaveClass('cursor-pointer');
+
+      // 引落予定がクリック可能
       const blueElements = container.querySelectorAll('.bg-blue-100');
-      const paymentElement = Array.from(blueElements).find(el => 
+      const scheduleElement = Array.from(blueElements).find(el => 
         el.textContent?.includes('引落予定')
       );
-      expect(paymentElement).toBeTruthy();
-      expect(paymentElement).toHaveClass('cursor-pointer');
+      expect(scheduleElement).toBeTruthy();
+      expect(scheduleElement).toHaveClass('cursor-pointer');
     });
   });
 
@@ -368,11 +500,24 @@ describe('CalendarView', () => {
     it('カレンダー下部に凡例が表示されること', () => {
       render(<CalendarView {...defaultProps} />);
       
-      // 凡例の引落予定と祝日表示を確認（複数あるため getAllByText を使用）
-      const legendItems = screen.getAllByText('引落予定');
-      expect(legendItems.length).toBeGreaterThan(0);
+      // 凡例の取引合計、引落予定、祝日表示を確認
+      const transactionLegend = screen.getAllByText('取引合計');
+      const scheduleLegend = screen.getAllByText('引落予定');
       
+      expect(transactionLegend.length).toBeGreaterThan(0);
+      expect(scheduleLegend.length).toBeGreaterThan(0);
       expect(screen.getByText('祝日')).toBeInTheDocument();
+    });
+
+    it('凡例の色が正しく表示されること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // 凡例の緑色（取引合計）と青色（引落予定）を確認
+      const greenLegend = container.querySelector('.bg-green-100.border-green-300');
+      const blueLegend = container.querySelector('.bg-blue-100.border-blue-300');
+      
+      expect(greenLegend).toBeInTheDocument();
+      expect(blueLegend).toBeInTheDocument();
     });
   });
 });

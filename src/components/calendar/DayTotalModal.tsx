@@ -198,9 +198,23 @@ export function DayTotalModal({
               <h2 className="text-lg font-semibold text-gray-900">
                 {formatJapaneseDate(selectedDate)}
               </h2>
-              <p className="text-sm text-gray-600">
-                引落予定合計: <span className="font-bold text-blue-600">{formatAmount(dayTotalData.totalAmount)}</span>
-              </p>
+              <div className="text-sm text-gray-600 space-y-1">
+                {dayTotalData.hasTransactions && (
+                  <p>
+                    取引合計: <span className="font-bold text-green-600">{formatAmount(dayTotalData.transactionTotal)}</span>
+                  </p>
+                )}
+                {dayTotalData.hasSchedule && (
+                  <p>
+                    引落予定合計: <span className="font-bold text-blue-600">{formatAmount(dayTotalData.scheduleTotal)}</span>
+                  </p>
+                )}
+                {dayTotalData.hasTransactions && dayTotalData.hasSchedule && (
+                  <p>
+                    総合計: <span className="font-bold text-gray-900">{formatAmount(dayTotalData.totalAmount)}</span>
+                  </p>
+                )}
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -216,72 +230,141 @@ export function DayTotalModal({
         
         {/* コンテンツ */}
         <div className="overflow-y-auto max-h-[60vh]">
-          {bankGroups.length === 0 ? (
+          {(!dayTotalData.hasTransactions && !dayTotalData.hasSchedule) ? (
             <div className="p-6 text-center">
-              <p className="text-gray-500">この日の引落予定はありません</p>
+              <p className="text-gray-500">この日にはデータがありません</p>
             </div>
           ) : (
-            <div className="p-4 space-y-4">
-              {bankGroups.map(bankGroup => (
-                <div
-                  key={bankGroup.bankId}
-                  className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-                >
-                  {/* 銀行セクションヘッダー */}
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-gray-900">
-                        {bankGroup.bankName}
-                      </h3>
-                      <span className="font-bold text-gray-900">
-                        {formatAmount(bankGroup.totalAmount)}
-                      </span>
-                    </div>
+            <div className="p-4 space-y-6">
+              {/* 取引データセクション */}
+              {dayTotalData.hasTransactions && (
+                <div className="space-y-4">
+                  <div className="border-l-4 border-green-500 pl-4">
+                    <h3 className="text-lg font-semibold text-green-700 mb-2">
+                      取引データ ({dayTotalData.transactionCount}件)
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      実際に行った支払い取引: <span className="font-bold text-green-600">{formatAmount(dayTotalData.transactionTotal)}</span>
+                    </p>
                   </div>
-                  
-                  {/* 支払い項目一覧 */}
-                  <div className="divide-y divide-gray-100">
-                    {bankGroup.items.map(item => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleItemClick(item)}
-                        className={cn(
-                          'px-4 py-3 flex items-center justify-between',
-                          item.transaction && 'hover:bg-gray-50 cursor-pointer transition-colors'
-                        )}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900">
-                              {item.cardName}
-                            </span>
-                            {item.type === 'schedule' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                予定
-                              </span>
-                            )}
-                          </div>
-                          {item.storeName && (
-                            <p className="text-sm text-gray-600 truncate">
-                              {item.storeName}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2">
+                  {bankGroups.filter(group => group.items.some(item => item.type === 'transaction')).map(bankGroup => (
+                    <div
+                      key={`transaction-${bankGroup.bankId}`}
+                      className="bg-white border border-green-200 rounded-lg overflow-hidden"
+                    >
+                      {/* 銀行セクションヘッダー */}
+                      <div className="px-4 py-3 bg-green-50 border-b border-green-200">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900">
+                            {bankGroup.bankName}
+                          </h4>
                           <span className="font-bold text-gray-900">
-                            {formatAmount(item.amount)}
+                            {formatAmount(bankGroup.items.filter(item => item.type === 'transaction').reduce((sum, item) => sum + item.amount, 0))}
                           </span>
-                          {item.transaction && (
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      
+                      {/* 取引項目一覧 */}
+                      <div className="divide-y divide-gray-100">
+                        {bankGroup.items.filter(item => item.type === 'transaction').map(item => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleItemClick(item)}
+                            className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium text-gray-900">
+                                  {item.cardName}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  取引
+                                </span>
+                              </div>
+                              {item.storeName && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  {item.storeName}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-gray-900">
+                                {formatAmount(item.amount)}
+                              </span>
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* 引落予定データセクション */}
+              {dayTotalData.hasSchedule && (
+                <div className="space-y-4">
+                  <div className="border-l-4 border-blue-500 pl-4">
+                    <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                      引落予定 ({dayTotalData.scheduleCount}件)
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      予定されている引落し: <span className="font-bold text-blue-600">{formatAmount(dayTotalData.scheduleTotal)}</span>
+                    </p>
+                  </div>
+                  {bankGroups.filter(group => group.items.some(item => item.type === 'schedule')).map(bankGroup => (
+                    <div
+                      key={`schedule-${bankGroup.bankId}`}
+                      className="bg-white border border-blue-200 rounded-lg overflow-hidden"
+                    >
+                      {/* 銀行セクションヘッダー */}
+                      <div className="px-4 py-3 bg-blue-50 border-b border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900">
+                            {bankGroup.bankName}
+                          </h4>
+                          <span className="font-bold text-gray-900">
+                            {formatAmount(bankGroup.items.filter(item => item.type === 'schedule').reduce((sum, item) => sum + item.amount, 0))}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* 引落予定項目一覧 */}
+                      <div className="divide-y divide-gray-100">
+                        {bankGroup.items.filter(item => item.type === 'schedule').map(item => (
+                          <div
+                            key={item.id}
+                            className="px-4 py-3 flex items-center justify-between"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium text-gray-900">
+                                  {item.cardName}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  予定
+                                </span>
+                              </div>
+                              {item.storeName && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  {item.storeName}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-gray-900">
+                                {formatAmount(item.amount)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

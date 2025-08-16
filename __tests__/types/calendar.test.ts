@@ -189,7 +189,7 @@ describe('Calendar Types', () => {
   });
 
   describe('DayTotalData', () => {
-    it('完全なDayTotalDataが正しく構築されること', () => {
+    it('完全なDayTotalDataが正しく構築されること（分離データ対応）', () => {
       const transactions: Transaction[] = [
         {
           id: 'trans-1',
@@ -228,19 +228,27 @@ describe('Calendar Types', () => {
 
       const dayTotalData: DayTotalData = {
         date: '2024-02-15',
-        totalAmount: 20000,
+        totalAmount: 20000, // 総合計
+        transactionTotal: 15000, // 取引合計
+        scheduleTotal: 5000, // 引落予定合計
         transactionCount: 1,
         scheduleCount: 1,
         bankGroups,
         transactions,
         scheduleItems,
-        hasData: true
+        hasData: true,
+        hasTransactions: true, // 取引データあり
+        hasSchedule: true // 引落予定データあり
       };
 
       expect(dayTotalData.date).toBe('2024-02-15');
       expect(dayTotalData.totalAmount).toBe(20000);
+      expect(dayTotalData.transactionTotal).toBe(15000);
+      expect(dayTotalData.scheduleTotal).toBe(5000);
       expect(dayTotalData.transactionCount).toBe(1);
       expect(dayTotalData.scheduleCount).toBe(1);
+      expect(dayTotalData.hasTransactions).toBe(true);
+      expect(dayTotalData.hasSchedule).toBe(true);
       expect(dayTotalData.bankGroups).toHaveLength(1);
       expect(dayTotalData.transactions).toHaveLength(1);
       expect(dayTotalData.scheduleItems).toHaveLength(1);
@@ -251,22 +259,76 @@ describe('Calendar Types', () => {
       const dayTotalData: DayTotalData = {
         date: '2024-02-20',
         totalAmount: 0,
+        transactionTotal: 0,
+        scheduleTotal: 0,
         transactionCount: 0,
         scheduleCount: 0,
         bankGroups: [],
         transactions: [],
         scheduleItems: [],
-        hasData: false
+        hasData: false,
+        hasTransactions: false,
+        hasSchedule: false
       };
 
       expect(dayTotalData.date).toBe('2024-02-20');
       expect(dayTotalData.totalAmount).toBe(0);
+      expect(dayTotalData.transactionTotal).toBe(0);
+      expect(dayTotalData.scheduleTotal).toBe(0);
       expect(dayTotalData.transactionCount).toBe(0);
       expect(dayTotalData.scheduleCount).toBe(0);
+      expect(dayTotalData.hasTransactions).toBe(false);
+      expect(dayTotalData.hasSchedule).toBe(false);
       expect(dayTotalData.bankGroups).toHaveLength(0);
       expect(dayTotalData.transactions).toHaveLength(0);
       expect(dayTotalData.scheduleItems).toHaveLength(0);
       expect(dayTotalData.hasData).toBe(false);
+    });
+
+    it('取引データのみの場合のDayTotalDataが正しく構築されること', () => {
+      const dayTotalData: DayTotalData = {
+        date: '2024-02-25',
+        totalAmount: 12000,
+        transactionTotal: 12000,
+        scheduleTotal: 0,
+        transactionCount: 2,
+        scheduleCount: 0,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: [],
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: false
+      };
+
+      expect(dayTotalData.hasTransactions).toBe(true);
+      expect(dayTotalData.hasSchedule).toBe(false);
+      expect(dayTotalData.transactionTotal).toBe(12000);
+      expect(dayTotalData.scheduleTotal).toBe(0);
+      expect(dayTotalData.totalAmount).toBe(12000);
+    });
+
+    it('引落予定データのみの場合のDayTotalDataが正しく構築されること', () => {
+      const dayTotalData: DayTotalData = {
+        date: '2024-02-28',
+        totalAmount: 8000,
+        transactionTotal: 0,
+        scheduleTotal: 8000,
+        transactionCount: 0,
+        scheduleCount: 2,
+        bankGroups: [],
+        transactions: [],
+        scheduleItems: [],
+        hasData: true,
+        hasTransactions: false,
+        hasSchedule: true
+      };
+
+      expect(dayTotalData.hasTransactions).toBe(false);
+      expect(dayTotalData.hasSchedule).toBe(true);
+      expect(dayTotalData.transactionTotal).toBe(0);
+      expect(dayTotalData.scheduleTotal).toBe(8000);
+      expect(dayTotalData.totalAmount).toBe(8000);
     });
   });
 
@@ -304,20 +366,28 @@ describe('Calendar Types', () => {
         totalAmount: 20000,
         transactionCount: 2,
         scheduleCount: 1,
+        transactionTotal: 15000,
+        scheduleTotal: 5000,
         bankGroups: [],
         transactions: [],
         scheduleItems: [],
-        hasData: true
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: true
       });
       totals.set('2024-02-20', {
         date: '2024-02-20',
         totalAmount: 15000,
         transactionCount: 1,
         scheduleCount: 0,
+        transactionTotal: 15000,
+        scheduleTotal: 0,
         bankGroups: [],
         transactions: [],
         scheduleItems: [],
-        hasData: true
+        hasData: true,
+        hasTransactions: true,
+        hasSchedule: false
       });
 
       const result: CalendarTotalsResult = {
@@ -374,10 +444,14 @@ describe('Calendar Types', () => {
         totalAmount: 0,
         transactionCount: 0,
         scheduleCount: 0,
+        transactionTotal: 0,
+        scheduleTotal: 0,
         bankGroups: [],
         transactions: [],
         scheduleItems: [],
-        hasData: false
+        hasData: false,
+        hasTransactions: false,
+        hasSchedule: false
       };
 
       // ISO日付形式（YYYY-MM-DD）であることを確認
