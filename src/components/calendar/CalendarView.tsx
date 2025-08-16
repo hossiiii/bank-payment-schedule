@@ -25,7 +25,8 @@ export interface CalendarViewProps {
   cards: Card[];
   onDateClick: (date: Date) => void;
   onTransactionClick: (transaction: Transaction) => void;
-  onDayTotalClick?: (date: Date, dayTotalData: DayTotalData) => void;
+  onTransactionViewClick?: (date: Date, transactions: Transaction[]) => void;
+  onScheduleViewClick?: (date: Date, scheduleItems: any[]) => void;
   onMonthChange?: (year: number, month: number) => void;
   className?: string;
 }
@@ -39,7 +40,8 @@ export function CalendarView({
   cards: _cards,
   onDateClick,
   onTransactionClick: _onTransactionClick,
-  onDayTotalClick,
+  onTransactionViewClick,
+  onScheduleViewClick,
   onMonthChange,
   className
 }: CalendarViewProps) {
@@ -159,16 +161,29 @@ export function CalendarView({
     onDateClick(calendarDay.date);
   };
 
-  const handleDayTotalClick = (calendarDay: CalendarDay, e: React.MouseEvent) => {
+  const handleTransactionClick = (calendarDay: CalendarDay, e: React.MouseEvent) => {
     e.stopPropagation(); // 日付クリックとは別のイベントとして処理
     
-    if (!calendarDay.date || !onDayTotalClick) return;
+    if (!calendarDay.date || !onTransactionViewClick) return;
     
     const dateKey = formatDateISO(calendarDay.date);
     const dayTotal = calculateDayTotals.get(dateKey);
     
-    if (dayTotal && dayTotal.hasData) {
-      onDayTotalClick(calendarDay.date, dayTotal);
+    if (dayTotal && dayTotal.hasTransactions) {
+      onTransactionViewClick(calendarDay.date, dayTotal.transactions);
+    }
+  };
+
+  const handleScheduleClick = (calendarDay: CalendarDay, e: React.MouseEvent) => {
+    e.stopPropagation(); // 日付クリックとは別のイベントとして処理
+    
+    if (!calendarDay.date || !onScheduleViewClick) return;
+    
+    const dateKey = formatDateISO(calendarDay.date);
+    const dayTotal = calculateDayTotals.get(dateKey);
+    
+    if (dayTotal && dayTotal.hasSchedule) {
+      onScheduleViewClick(calendarDay.date, dayTotal.scheduleItems);
     }
   };
 
@@ -266,7 +281,7 @@ export function CalendarView({
                       <div 
                         key="transaction"
                         className="px-2 py-1 text-xs rounded cursor-pointer bg-green-100 text-green-900 hover:bg-green-200 border border-green-300 font-semibold"
-                        onClick={(e) => handleDayTotalClick(calendarDay, e)}
+                        onClick={(e) => handleTransactionClick(calendarDay, e)}
                         title={`取引合計: ${formatAmount(dayTotal.transactionTotal)} (取引${dayTotal.transactionCount}件)`}
                       >
                         <div className="text-center">
@@ -283,7 +298,7 @@ export function CalendarView({
                       <div 
                         key="schedule"
                         className="px-2 py-1 text-xs rounded cursor-pointer bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-300 font-semibold"
-                        onClick={(e) => handleDayTotalClick(calendarDay, e)}
+                        onClick={(e) => handleScheduleClick(calendarDay, e)}
                         title={`引落予定合計: ${formatAmount(dayTotal.scheduleTotal)} (予定${dayTotal.scheduleCount}件)`}
                       >
                         <div className="text-center">

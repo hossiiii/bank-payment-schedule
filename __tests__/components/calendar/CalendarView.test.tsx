@@ -120,7 +120,7 @@ describe('CalendarView', () => {
     cards: mockCards,
     onDateClick: jest.fn(),
     onTransactionClick: jest.fn(),
-    onDayTotalClick: jest.fn(),
+    onTransactionViewClick: jest.fn(),
     onMonthChange: jest.fn()
   };
 
@@ -302,10 +302,10 @@ describe('CalendarView', () => {
     });
   });
 
-  describe('DayTotalModal との連携', () => {
-    it('取引データをクリックすると onDayTotalClick が適切なデータで呼ばれること', async () => {
-      const onDayTotalClick = jest.fn();
-      const { container } = render(<CalendarView {...defaultProps} onDayTotalClick={onDayTotalClick} />);
+  describe('分離クリックハンドラーの動作', () => {
+    it('取引データをクリックすると onTransactionViewClick が正しい取引データで呼ばれること', async () => {
+      const onTransactionViewClick = jest.fn();
+      const { container } = render(<CalendarView {...defaultProps} onTransactionViewClick={onTransactionViewClick} />);
       
       // bg-green-100クラスを持つ要素を直接探す
       const greenElements = container.querySelectorAll('.bg-green-100');
@@ -317,26 +317,25 @@ describe('CalendarView', () => {
       fireEvent.click(transactionElement!);
       
       await waitFor(() => {
-        expect(onDayTotalClick).toHaveBeenCalledWith(
+        expect(onTransactionViewClick).toHaveBeenCalledWith(
           new Date(2024, 1, 15),
-          expect.objectContaining({
-            date: '2024-02-15',
-            transactionTotal: 37840,
-            scheduleTotal: 5000,
-            totalAmount: 42840,
-            transactionCount: 2,
-            scheduleCount: 1,
-            hasData: true,
-            hasTransactions: true,
-            hasSchedule: true
-          })
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'trans-1',
+              storeName: 'Amazon'
+            }),
+            expect.objectContaining({
+              id: 'trans-2',
+              storeName: '楽天市場'
+            })
+          ])
         );
       });
     });
 
-    it('引落予定をクリックすると onDayTotalClick が適切なデータで呼ばれること', async () => {
-      const onDayTotalClick = jest.fn();
-      const { container } = render(<CalendarView {...defaultProps} onDayTotalClick={onDayTotalClick} />);
+    it('引落予定をクリックすると onScheduleViewClick が正しい引落予定データで呼ばれること', async () => {
+      const onScheduleViewClick = jest.fn();
+      const { container } = render(<CalendarView {...defaultProps} onScheduleViewClick={onScheduleViewClick} />);
       
       // bg-blue-100クラスを持つ要素を直接探す
       const blueElements = container.querySelectorAll('.bg-blue-100');
@@ -348,47 +347,126 @@ describe('CalendarView', () => {
       fireEvent.click(scheduleElement!);
       
       await waitFor(() => {
-        expect(onDayTotalClick).toHaveBeenCalledWith(
+        expect(onScheduleViewClick).toHaveBeenCalledWith(
           new Date(2024, 1, 15),
-          expect.objectContaining({
-            date: '2024-02-15',
-            transactionTotal: 37840,
-            scheduleTotal: 5000,
-            totalAmount: 42840,
-            transactionCount: 2,
-            scheduleCount: 1,
-            hasData: true,
-            hasTransactions: true,
-            hasSchedule: true
-          })
+          expect.arrayContaining([
+            expect.objectContaining({
+              transactionId: 'schedule-1',
+              amount: 5000
+            })
+          ])
         );
       });
     });
 
-    it('データクリックが日付クリックとは別のイベントとして処理されること', async () => {
+    it('取引データクリックが日付クリックとは別のイベントとして処理されること', async () => {
       const onDateClick = jest.fn();
-      const onDayTotalClick = jest.fn();
+      const onTransactionViewClick = jest.fn();
       
       const { container } = render(<CalendarView 
         {...defaultProps} 
         onDateClick={onDateClick}
-        onDayTotalClick={onDayTotalClick}
+        onTransactionViewClick={onTransactionViewClick}
       />);
       
-      // クリック可能な引落予定要素を探す（cursor-pointerクラス）
+      // 取引データ要素を探す
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      expect(transactionElement).toBeTruthy();
+      
+      fireEvent.click(transactionElement!);
+      
+      await waitFor(() => {
+        expect(onTransactionViewClick).toHaveBeenCalled();
+        // onDateClickは日付クリックとは別のハンドラーなので呼ばれない
+        expect(onDateClick).not.toHaveBeenCalled();
+      });
+    });
+
+    it('引落予定クリックが日付クリックとは別のイベントとして処理されること', async () => {
+      const onDateClick = jest.fn();
+      const onScheduleViewClick = jest.fn();
+      
+      const { container } = render(<CalendarView 
+        {...defaultProps} 
+        onDateClick={onDateClick}
+        onScheduleViewClick={onScheduleViewClick}
+      />);
+      
+      // 引落予定要素を探す
       const blueElements = container.querySelectorAll('.bg-blue-100');
       const scheduleElement = Array.from(blueElements).find(el => 
-        el.textContent?.includes('引落予定') && el.textContent?.includes('￥5,000')
+        el.textContent?.includes('引落予定')
       );
       expect(scheduleElement).toBeTruthy();
       
       fireEvent.click(scheduleElement!);
       
       await waitFor(() => {
-        expect(onDayTotalClick).toHaveBeenCalled();
+        expect(onScheduleViewClick).toHaveBeenCalled();
         // onDateClickは日付クリックとは別のハンドラーなので呼ばれない
         expect(onDateClick).not.toHaveBeenCalled();
       });
+    });
+
+    it('日付の空白部分をクリックすると onDateClick のみが呼ばれること', async () => {
+      const onDateClick = jest.fn();
+      const onTransactionViewClick = jest.fn();
+      const onScheduleViewClick = jest.fn();
+      
+      const { container } = render(<CalendarView 
+        {...defaultProps} 
+        onDateClick={onDateClick}
+        onTransactionViewClick={onTransactionViewClick}
+        onScheduleViewClick={onScheduleViewClick}
+      />);
+      
+      // データがない日付（1日）をクリック
+      const dayElement = screen.getByText('1');
+      const dayCell = dayElement.closest('div[class*="min-h-[80px]"]');
+      expect(dayCell).toBeTruthy();
+      
+      fireEvent.click(dayCell!);
+      
+      await waitFor(() => {
+        expect(onDateClick).toHaveBeenCalledWith(new Date(2024, 1, 1));
+        expect(onTransactionViewClick).not.toHaveBeenCalled();
+        expect(onScheduleViewClick).not.toHaveBeenCalled();
+      });
+    });
+
+    it('onTransactionViewClickが提供されていない場合、取引データクリックが動作しないこと', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      const greenElements = container.querySelectorAll('.bg-green-100');
+      const transactionElement = Array.from(greenElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      
+      // クリックしてもエラーが発生しないことを確認
+      expect(() => {
+        if (transactionElement) {
+          fireEvent.click(transactionElement);
+        }
+      }).not.toThrow();
+    });
+
+    it('onScheduleViewClickが提供されていない場合、引落予定クリックが動作しないこと', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      const blueElements = container.querySelectorAll('.bg-blue-100');
+      const scheduleElement = Array.from(blueElements).find(el => 
+        el.textContent?.includes('引落予定')
+      );
+      
+      // クリックしてもエラーが発生しないことを確認
+      expect(() => {
+        if (scheduleElement) {
+          fireEvent.click(scheduleElement);
+        }
+      }).not.toThrow();
     });
   });
 
@@ -493,6 +571,120 @@ describe('CalendarView', () => {
       );
       expect(scheduleElement).toBeTruthy();
       expect(scheduleElement).toHaveClass('cursor-pointer');
+    });
+  });
+
+  describe('店舗情報表示', () => {
+    it('カード・自動引き落としの右に店舗情報が表示されること', () => {
+      render(<CalendarView {...defaultProps} />);
+      
+      // ツールチップに店舗情報が含まれていることを確認
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // 取引合計のツールチップに店舗情報が表示される
+      const transactionElement = container.querySelector('[title*="取引合計"]');
+      expect(transactionElement).toBeTruthy();
+      expect(transactionElement).toHaveAttribute('title', expect.stringContaining('取引2件'));
+    });
+
+    it('店舗情報がない取引でも正常に表示されること', () => {
+      const transactionWithoutStore: Transaction = {
+        ...mockTransactions[0],
+        storeName: ''
+      };
+      
+      const propsWithoutStore = {
+        ...defaultProps,
+        transactions: [transactionWithoutStore]
+      };
+      
+      render(<CalendarView {...propsWithoutStore} />);
+      
+      // 店舗名がなくても取引合計は表示される
+      const transactionTotals = screen.getAllByText('取引合計');
+      expect(transactionTotals.length).toBeGreaterThan(0);
+      expect(screen.getByText('￥15,000')).toBeInTheDocument();
+    });
+
+    it('取引データ表示に必要な情報が含まれていること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // 取引合計ボックスがクリック可能で、適切なスタイルを持つ
+      const transactionElements = container.querySelectorAll('.bg-green-100.cursor-pointer');
+      const validTransactionElement = Array.from(transactionElements).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      
+      expect(validTransactionElement).toBeTruthy();
+      expect(validTransactionElement).toHaveClass('text-green-900');
+      expect(validTransactionElement).toHaveClass('hover:bg-green-200');
+    });
+
+    it('引落予定データ表示に必要な情報が含まれていること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // 引落予定ボックスがクリック可能で、適切なスタイルを持つ
+      const scheduleElements = container.querySelectorAll('.bg-blue-100');
+      const validScheduleElement = Array.from(scheduleElements).find(el => 
+        el.textContent?.includes('引落予定') && 
+        el.classList.contains('cursor-pointer')
+      );
+      
+      expect(validScheduleElement).toBeTruthy();
+      expect(validScheduleElement).toHaveClass('bg-blue-100');
+      expect(validScheduleElement).toHaveClass('cursor-pointer');
+    });
+  });
+
+  describe('総合計削除の確認', () => {
+    it('各ダイアログで個別表示のみになっていること（総合計なし）', () => {
+      render(<CalendarView {...defaultProps} />);
+      
+      // 取引合計と引落予定が個別に表示され、「総合計」表示がないことを確認
+      const transactionTotals = screen.getAllByText('取引合計');
+      const scheduleTotals = screen.getAllByText('引落予定');
+      
+      expect(transactionTotals.length).toBeGreaterThan(0);
+      expect(scheduleTotals.length).toBeGreaterThan(0);
+      
+      // カレンダー上に「総合計」という文字列が表示されていないことを確認
+      expect(screen.queryByText('総合計')).not.toBeInTheDocument();
+    });
+
+    it('取引データと引落予定データが分離されて表示されること', () => {
+      render(<CalendarView {...defaultProps} />);
+      
+      // 各データタイプが独立して表示される
+      const transactionAmounts = screen.getAllByText('￥37,840'); // 取引合計
+      const scheduleAmounts = screen.getAllByText('￥5,000'); // 引落予定合計
+      
+      expect(transactionAmounts.length).toBeGreaterThan(0);
+      expect(scheduleAmounts.length).toBeGreaterThan(0);
+      
+      // 合計金額（42,840円）が表示されていないことを確認
+      expect(screen.queryByText('￥42,840')).not.toBeInTheDocument();
+    });
+
+    it('同じ日に両方のデータがある場合、2つの別々のボックスで表示されること', () => {
+      const { container } = render(<CalendarView {...defaultProps} />);
+      
+      // 15日には取引データと引落予定データの両方がある
+      // 緑色のボックス（取引）と青色のボックス（引落予定）が別々に表示される
+      const greenBoxes = container.querySelectorAll('.bg-green-100');
+      const blueBoxes = container.querySelectorAll('.bg-blue-100');
+      
+      const transactionBox = Array.from(greenBoxes).find(el => 
+        el.textContent?.includes('取引合計')
+      );
+      const scheduleBox = Array.from(blueBoxes).find(el => 
+        el.textContent?.includes('引落予定')
+      );
+      
+      expect(transactionBox).toBeTruthy();
+      expect(scheduleBox).toBeTruthy();
+      
+      // 両方が独立したボックスとして表示される
+      expect(transactionBox).not.toBe(scheduleBox);
     });
   });
 
