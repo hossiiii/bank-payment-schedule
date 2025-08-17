@@ -85,11 +85,11 @@ function groupByBank(
       id: transaction.id,
       type: 'transaction',
       amount: transaction.amount,
+      storeName: transaction.storeName || '',
       paymentType: transaction.paymentType,
       bankName,
       cardName: displayName,
-      transaction,
-      ...(transaction.storeName && { storeName: transaction.storeName })
+      transaction
     };
     
     group.items.push(item);
@@ -141,11 +141,11 @@ function groupByBank(
       id: scheduleItem.transactionId,
       type: 'schedule',
       amount: scheduleItem.amount,
+      storeName: scheduleItem.storeName || '',
       paymentType: scheduleItem.paymentType,
       bankName,
       cardName: displayName,
-      scheduleItem,
-      ...(scheduleItem.storeName && { storeName: scheduleItem.storeName })
+      scheduleItem
     };
     
     group.items.push(item);

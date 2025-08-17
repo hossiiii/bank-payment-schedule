@@ -132,8 +132,8 @@ export function DataFixPanel({
     }
   };
 
-  const hasProblems = analysisResult?.details.analysis.problematicCards.length > 0;
-  const needsFix = hasProblems && previewResult?.summary.cardsFixed > 0;
+  const hasProblems = (analysisResult?.details.analysis.problematicCards?.length ?? 0) > 0;
+  const needsFix = hasProblems && (previewResult?.summary.cardsFixed ?? 0) > 0;
 
   return (
     <div className={cn('bg-white rounded-lg shadow-sm', className)}>
@@ -387,7 +387,7 @@ export function DataFixPanel({
         `}
         confirmText="実行"
         cancelText="キャンセル"
-        variant="primary"
+        variant="default"
         isLoading={isApplying}
       />
     </div>
