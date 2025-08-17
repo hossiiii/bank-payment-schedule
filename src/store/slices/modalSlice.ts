@@ -36,7 +36,7 @@ export const createModalSlice: StateCreator<
   modalStates: initialModalStates,
   selectedData: initialSelectedData,
   
-  actions: {
+  modalActions: {
     // Open a specific modal with optional data
     openModal: (modalType: ModalType, data?: Partial<SelectedData>) => {
       set((state) => ({
@@ -127,7 +127,7 @@ export const createModalSlice: StateCreator<
 
     // Cross-modal operation: Schedule modal -> Transaction modal
     handleScheduleTransactionClick: async (transactionId: string) => {
-      const { actions: transactionActions } = get();
+      const { transactionActions } = get();
       
       try {
         // Fetch the transaction by ID
@@ -135,10 +135,10 @@ export const createModalSlice: StateCreator<
         
         if (transaction) {
           // Close any open modals first
-          get().actions.closeAllModals();
+          get().modalActions.closeAllModals();
           
           // Open transaction modal with the fetched transaction
-          get().actions.openModal('transaction', {
+          get().modalActions.openModal('transaction', {
             date: new Date(transaction.date),
             transaction: transaction,
           });
@@ -148,6 +148,12 @@ export const createModalSlice: StateCreator<
         // Optionally set an error state here
       }
     },
+
+    // Proxy method for fetching transactions
+    fetchTransactionById: async (id: string): Promise<Transaction | null> => {
+      const { transactionActions } = get();
+      return await transactionActions.fetchTransactionById(id);
+    },
   },
 });
 
@@ -155,23 +161,23 @@ export const createModalSlice: StateCreator<
 export const createModalActions = (get: () => AppStore, set: (partial: Partial<AppStore>) => void) => ({
   // Individual modal openers
   openTransactionModal: (date: Date, transaction?: Transaction) => {
-    get().actions.openModal('transaction', { date, transaction: transaction || null });
+    get().modalActions.openModal('transaction', { date, transaction: transaction || null });
   },
 
   openTransactionViewModal: (date: Date, transactions: Transaction[]) => {
-    get().actions.openModal('transactionView', { date, transactions });
+    get().modalActions.openModal('transactionView', { date, transactions });
   },
 
   openScheduleViewModal: (date: Date, scheduleItems: ScheduleItem[]) => {
-    get().actions.openModal('scheduleView', { date, scheduleItems });
+    get().modalActions.openModal('scheduleView', { date, scheduleItems });
   },
 
   openScheduleEditModal: (scheduleItem: ScheduleItem) => {
-    get().actions.openModal('scheduleEdit', { scheduleItem });
+    get().modalActions.openModal('scheduleEdit', { scheduleItem });
   },
 
   openDayTotalModal: (date: Date, dayTotalData: DayTotalData) => {
-    get().actions.openModal('dayTotal', { date, dayTotalData });
+    get().modalActions.openModal('dayTotal', { date, dayTotalData });
   },
 
   // Individual modal closers
@@ -184,7 +190,7 @@ export const createModalActions = (get: () => AppStore, set: (partial: Partial<A
 
   // Cross-modal handlers
   handleTransactionViewTransactionClick: (transaction: Transaction) => {
-    get().actions.handleTransactionViewTransactionClick(transaction);
+    get().modalActions.handleTransactionViewTransactionClick(transaction);
   },
 
   handleScheduleTransactionClick: async (transactionId: string) => {

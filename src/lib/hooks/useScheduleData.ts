@@ -252,7 +252,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
         }));
       }
     }
-  }, [calculateScheduleData]);
+  }, [calculateScheduleData, error]);
 
   // Auto-fetch when dependencies change
   useEffect(() => {
@@ -307,7 +307,7 @@ export function useRealtimeScheduleData(year: number, month: number): UseSchedul
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [result.refetch]);
+  }, [result]);
 
   return result;
 }
@@ -355,7 +355,7 @@ export function useMultiMonthScheduleData(
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, startMonth, monthCount]);
+  }, [monthCount]);
 
   useEffect(() => {
     refetchAll();

@@ -84,6 +84,7 @@ export interface ModalActions {
   // Cross-modal operations
   handleTransactionViewTransactionClick: (transaction: Transaction) => void;
   handleScheduleTransactionClick: (transactionId: string) => Promise<void>;
+  fetchTransactionById: (id: string) => Promise<Transaction | null>;
 }
 
 export interface TransactionActions {
@@ -99,6 +100,9 @@ export interface TransactionActions {
   // Cache management
   invalidateTransactionCache: (key?: string) => void;
   clearTransactionCache: () => void;
+  
+  // Cross-store operations
+  withAsyncOperation: <T>(operationKey: keyof LoadingStates, operation: () => Promise<T>) => Promise<T>;
 }
 
 export interface ScheduleActions {
@@ -112,6 +116,10 @@ export interface ScheduleActions {
   // Cache management
   invalidateScheduleCache: (key?: string) => void;
   clearScheduleCache: () => void;
+  
+  // Cross-store operations
+  withAsyncOperation: <T>(operationKey: keyof LoadingStates, operation: () => Promise<T>) => Promise<T>;
+  invalidateTransactionCache: (key?: string) => void;
 }
 
 export interface UIActions {
@@ -122,13 +130,16 @@ export interface UIActions {
   setError: (key: keyof ErrorStates, error: DatabaseError | null) => void;
   clearErrors: () => void;
   clearError: (key: keyof ErrorStates) => void;
+  
+  // Async operation wrapper
+  withAsyncOperation: <T>(operationKey: keyof LoadingStates, operation: () => Promise<T>) => Promise<T>;
 }
 
 // Store state interfaces
 export interface ModalSlice {
   modalStates: ModalStates;
   selectedData: SelectedData;
-  actions: ModalActions;
+  modalActions: ModalActions;
 }
 
 export interface TransactionSlice {
@@ -136,19 +147,19 @@ export interface TransactionSlice {
   transactionCache: TransactionCache;
   banks: Bank[];
   cards: Card[];
-  actions: TransactionActions;
+  transactionActions: TransactionActions;
 }
 
 export interface ScheduleSlice {
   schedules: { [key: string]: MonthlySchedule };
   scheduleCache: ScheduleCache;
-  actions: ScheduleActions;
+  scheduleActions: ScheduleActions;
 }
 
 export interface UISlice {
   loading: LoadingStates;
   errors: ErrorStates;
-  actions: UIActions;
+  uiActions: UIActions;
 }
 
 // Combined store interface

@@ -243,7 +243,7 @@ export function useBanks() {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [fetchBanks]);
   
   return {
     banks: state.data,
@@ -423,7 +423,7 @@ export function useCards(bankId?: string) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [fetchCards]);
   
   const bulkUpdateCards = useCallback(async (updates: Map<string, Partial<CardInput>>): Promise<void> => {
     try {
@@ -503,7 +503,7 @@ export function useTransactions(filters?: TransactionFilters) {
       }
       throw error;
     }
-  }, [filters]);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.paymentType, filters?.bankId, filters?.cardId, filters?.isScheduleEditable]);
   
   const createTransaction = useCallback(async (transactionData: TransactionInput): Promise<Transaction> => {
     try {
@@ -633,7 +633,7 @@ export function useTransactions(filters?: TransactionFilters) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [fetchTransactions]);
   
   const bulkUpdateTransactions = useCallback(async (updates: Map<string, { scheduledPayDate: number }>): Promise<void> => {
     try {
@@ -829,7 +829,7 @@ export function useDatabaseStats() {
   
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
   
   return {
     stats,

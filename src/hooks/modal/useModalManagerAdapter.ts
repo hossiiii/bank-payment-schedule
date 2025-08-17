@@ -8,6 +8,7 @@ import {
   ModalManagerConfig, 
   UseModalManagerReturn 
 } from './useModalManager';
+import { logError, logWarn } from '@/lib/utils/logger';
 import { Transaction, TransactionInput, ScheduleItem } from '@/types/database';
 import { DayTotalData } from '@/types/calendar';
 
@@ -38,11 +39,11 @@ export function useModalManagerAdapter(config: ModalManagerConfig = {}): UseModa
       if (selectedData.transaction) {
         // Update existing transaction
         // TODO: Implement updateTransaction in store slice
-        console.warn('updateTransaction not yet implemented in Zustand store');
+        logWarn('updateTransaction not yet implemented in Zustand store', undefined, 'useModalManagerAdapter');
       } else {
         // Create new transaction
         // TODO: Implement createTransaction in store slice
-        console.warn('createTransaction not yet implemented in Zustand store');
+        logWarn('createTransaction not yet implemented in Zustand store', undefined, 'useModalManagerAdapter');
       }
       
       // Call config callback if provided
@@ -50,10 +51,10 @@ export function useModalManagerAdapter(config: ModalManagerConfig = {}): UseModa
         await config.onTransactionSave(transactionInput);
       }
     } catch (error) {
-      console.error('Failed to save transaction:', error);
+      logError('Failed to save transaction', error, 'useModalManagerAdapter');
       throw error;
     }
-  }, [selectedData.transaction, transaction, config]);
+  }, [selectedData.transaction, config]);
 
   const handleTransactionDelete = useCallback(async (transactionId: string) => {
     try {
@@ -64,7 +65,7 @@ export function useModalManagerAdapter(config: ModalManagerConfig = {}): UseModa
         await config.onTransactionDelete(transactionId);
       }
     } catch (error) {
-      console.error('Failed to delete transaction:', error);
+      logError('Failed to delete transaction', error, 'useModalManagerAdapter');
       throw error;
     }
   }, [transaction, config]);
@@ -78,7 +79,7 @@ export function useModalManagerAdapter(config: ModalManagerConfig = {}): UseModa
         await config.onScheduleSave(scheduleId, updates);
       }
     } catch (error) {
-      console.error('Failed to save schedule:', error);
+      logError('Failed to save schedule', error, 'useModalManagerAdapter');
       throw error;
     }
   }, [schedule, config]);
@@ -92,7 +93,7 @@ export function useModalManagerAdapter(config: ModalManagerConfig = {}): UseModa
         await config.onScheduleDelete(scheduleId);
       }
     } catch (error) {
-      console.error('Failed to delete schedule:', error);
+      logError('Failed to delete schedule', error, 'useModalManagerAdapter');
       throw error;
     }
   }, [schedule, config]);

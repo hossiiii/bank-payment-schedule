@@ -37,25 +37,25 @@ export const useStoreActions = () => {
   return {
     // Modal actions with enhanced API
     modal: {
-      ...store.actions,
+      ...store.modalActions,
       ...createModalActions(useAppStore.getState, useAppStore.setState),
     },
     
     // Transaction actions with enhanced API
     transaction: {
-      ...store.actions,
+      ...store.transactionActions,
       ...createTransactionHelpers(useAppStore.getState, useAppStore.setState),
     },
     
     // Schedule actions with enhanced API
     schedule: {
-      ...store.actions,
+      ...store.scheduleActions,
       ...createScheduleHelpers(useAppStore.getState),
     },
     
     // UI actions with enhanced API
     ui: {
-      ...store.actions,
+      ...store.uiActions,
       ...createUIHelpers(useAppStore.getState),
     },
   };
@@ -66,7 +66,7 @@ export const useModalStore = () => {
   return useAppStore((state) => ({
     modalStates: state.modalStates,
     selectedData: state.selectedData,
-    actions: state.actions,
+    actions: state.modalActions,
   }));
 };
 
@@ -75,14 +75,14 @@ export const useTransactionStore = () => {
     transactions: state.transactions,
     banks: state.banks,
     cards: state.cards,
-    actions: state.actions,
+    actions: state.transactionActions,
   }));
 };
 
 export const useScheduleStore = () => {
   return useAppStore((state) => ({
     schedules: state.schedules,
-    actions: state.actions,
+    actions: state.scheduleActions,
   }));
 };
 
@@ -90,7 +90,7 @@ export const useUIStore = () => {
   return useAppStore((state) => ({
     loading: state.loading,
     errors: state.errors,
-    actions: state.actions,
+    actions: state.uiActions,
   }));
 };
 
@@ -170,8 +170,8 @@ export const clearStore = () => {
   const state = useAppStore.getState();
   
   // Clear all caches and close modals
-  state.actions.closeAllModals();
-  state.actions.clearErrors();
+  state.modalActions.closeAllModals();
+  state.uiActions.clearErrors();
 };
 
 // Store persistence helpers (for future use)

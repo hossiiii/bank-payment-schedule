@@ -3,6 +3,7 @@ import {
   TransactionSlice, 
   TransactionCache, 
   CACHE_DURATIONS,
+  LoadingStates,
   AppStore 
 } from '../types';
 import { 
@@ -53,10 +54,10 @@ export const createTransactionSlice: StateCreator<
   banks: [],
   cards: [],
   
-  actions: {
+  transactionActions: {
     // Fetch transactions with optional filters
     fetchTransactions: async (filters?: { dateRange?: { start: number; end: number } }) => {
-      const { actions: uiActions } = get();
+      const { uiActions } = get();
       
       return await uiActions.withAsyncOperation('transactions', async () => {
         const state = get();
@@ -93,7 +94,7 @@ export const createTransactionSlice: StateCreator<
 
     // Fetch a single transaction by ID
     fetchTransactionById: async (id: string) => {
-      const { actions: uiActions } = get();
+      const { uiActions } = get();
       
       return await uiActions.withAsyncOperation('transactions', async () => {
         const transaction = await transactionOperations.getById(id);
@@ -113,7 +114,7 @@ export const createTransactionSlice: StateCreator<
 
     // Create a new transaction
     createTransaction: async (input: TransactionInput) => {
-      const { actions: uiActions, actions: modalActions } = get();
+      const { uiActions, modalActions } = get();
       
       await uiActions.withAsyncOperation('saving', async () => {
         const newTransaction = await transactionOperations.create(input);
@@ -124,7 +125,7 @@ export const createTransactionSlice: StateCreator<
         }));
         
         // Invalidate cache
-        get().actions.invalidateTransactionCache();
+        get().transactionActions.invalidateTransactionCache();
         
         // Close modals on successful save
         modalActions.closeAllModals();
@@ -135,7 +136,7 @@ export const createTransactionSlice: StateCreator<
 
     // Update an existing transaction
     updateTransaction: async (id: string, updates: Partial<Transaction>) => {
-      const { actions: uiActions, actions: modalActions } = get();
+      const { uiActions, modalActions } = get();
       
       await uiActions.withAsyncOperation('saving', async () => {
         const updatedTransaction = await transactionOperations.update(id, updates);
@@ -148,7 +149,7 @@ export const createTransactionSlice: StateCreator<
         }));
         
         // Invalidate cache
-        get().actions.invalidateTransactionCache();
+        get().transactionActions.invalidateTransactionCache();
         
         // Close modals on successful save
         modalActions.closeAllModals();
@@ -159,7 +160,7 @@ export const createTransactionSlice: StateCreator<
 
     // Delete a transaction
     deleteTransaction: async (id: string) => {
-      const { actions: uiActions, actions: modalActions } = get();
+      const { uiActions, modalActions } = get();
       
       await uiActions.withAsyncOperation('deleting', async () => {
         await transactionOperations.delete(id);
@@ -170,7 +171,7 @@ export const createTransactionSlice: StateCreator<
         }));
         
         // Invalidate cache
-        get().actions.invalidateTransactionCache();
+        get().transactionActions.invalidateTransactionCache();
         
         // Close modals on successful delete
         modalActions.closeAllModals();
@@ -193,6 +194,15 @@ export const createTransactionSlice: StateCreator<
     clearTransactionCache: () => {
       set({ transactionCache: {} });
     },
+
+    // Cross-store operations
+    withAsyncOperation: async <T>(
+      operationKey: keyof LoadingStates,
+      operation: () => Promise<T>
+    ): Promise<T> => {
+      const { uiActions } = get();
+      return await uiActions.withAsyncOperation(operationKey, operation);
+    },
   },
 });
 
@@ -200,7 +210,7 @@ export const createTransactionSlice: StateCreator<
 export const createTransactionHelpers = (get: () => AppStore, set: (partial: Partial<AppStore>) => void) => ({
   // Fetch banks for transaction forms
   fetchBanks: async (): Promise<Bank[]> => {
-    const { actions: uiActions } = get();
+    const { uiActions } = get();
     
     return await uiActions.withAsyncOperation('banks', async () => {
       const banks = await bankOperations.getAll();
@@ -211,7 +221,7 @@ export const createTransactionHelpers = (get: () => AppStore, set: (partial: Par
 
   // Fetch cards for transaction forms
   fetchCards: async (): Promise<Card[]> => {
-    const { actions: uiActions } = get();
+    const { uiActions } = get();
     
     return await uiActions.withAsyncOperation('cards', async () => {
       const cards = await cardOperations.getAll();
@@ -222,7 +232,7 @@ export const createTransactionHelpers = (get: () => AppStore, set: (partial: Par
 
   // Fetch cards for a specific bank
   fetchCardsByBank: async (bankId: string): Promise<Card[]> => {
-    const { actions: uiActions } = get();
+    const { uiActions } = get();
     
     return await uiActions.withAsyncOperation('cards', async () => {
       const cards = await cardOperations.getByBankId(bankId);

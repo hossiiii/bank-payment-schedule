@@ -1,9 +1,19 @@
 /**
- * Zustand Store Testing Utilities
- * Phase 2 refactoring support
+ * Enhanced Zustand Store Testing Utilities
+ * Phase 3 comprehensive testing support
+ * Production-ready testing infrastructure
  */
 
 import { act } from '@testing-library/react';
+import { create } from 'zustand';
+import { StateCreator, UseBoundStore } from 'zustand';
+import { AppStore, StoreConfig } from '@/store/types';
+import { 
+  createModalSlice, 
+  createTransactionSlice, 
+  createScheduleSlice, 
+  createUISlice 
+} from '@/store';
 
 // Store state utilities
 export const createInitialStoreState = () => ({

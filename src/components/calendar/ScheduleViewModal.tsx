@@ -5,6 +5,7 @@ import { formatAmount } from '@/lib/utils/validation';
 import { formatJapaneseDate } from '@/lib/utils/dateUtils';
 import { ScheduleItem, Bank, Card } from '@/types/database';
 import { BaseModal, BaseModalFooter } from './BaseModal';
+import { logDebug, logWarn } from '@/lib/utils/logger';
 
 export interface ScheduleViewModalProps {
   isOpen: boolean;
@@ -59,41 +60,35 @@ function groupSchedulesByBank(
     let displayName: string;
     
     // デバッグ情報を出力（開発環境のみ）
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Processing scheduleItem:', {
-        transactionId: scheduleItem.transactionId,
-        paymentType: scheduleItem.paymentType,
-        cardId: scheduleItem.cardId,
-        cardName: scheduleItem.cardName,
-        bankName: scheduleItem.bankName
-      });
-    }
+    logDebug('Processing scheduleItem', {
+      transactionId: scheduleItem.transactionId,
+      paymentType: scheduleItem.paymentType,
+      cardId: scheduleItem.cardId,
+      cardName: scheduleItem.cardName,
+      bankName: scheduleItem.bankName
+    }, 'ScheduleViewModal');
     
     if (scheduleItem.paymentType === 'card' && scheduleItem.cardId) {
       // カードID でカードを検索
       const card = cardMap.get(scheduleItem.cardId);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Card search result:', {
-          cardId: scheduleItem.cardId,
-          cardFound: !!card,
-          availableCardIds: Array.from(cardMap.keys()),
-          cardMapSize: cardMap.size
-        });
-      }
+      logDebug('Card search result', {
+        cardId: scheduleItem.cardId,
+        cardFound: !!card,
+        availableCardIds: Array.from(cardMap.keys()),
+        cardMapSize: cardMap.size
+      }, 'ScheduleViewModal');
       
       if (!card) {
         // カードが見つからない場合、カード名での検索を試行
         const cardByName = cards.find(c => c.name === scheduleItem.cardName);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Fallback card search by name:', {
-            cardName: scheduleItem.cardName,
-            cardFoundByName: !!cardByName,
-            availableCardNames: cards.map(c => c.name)
-          });
-        }
+        logDebug('Fallback card search by name', {
+          cardName: scheduleItem.cardName,
+          cardFoundByName: !!cardByName,
+          availableCardNames: cards.map(c => c.name)
+        }, 'ScheduleViewModal');
         
         if (!cardByName) {
-          console.warn('Card not found by ID or name for scheduleItem:', scheduleItem.transactionId);
+          logWarn('Card not found by ID or name for scheduleItem', scheduleItem.transactionId, 'ScheduleViewModal');
           return;
         }
         
@@ -101,7 +96,7 @@ function groupSchedulesByBank(
         bankId = cardByName.bankId;
         const bank = bankMap.get(bankId);
         if (!bank) {
-          console.warn('Bank not found for card:', cardByName.name);
+          logWarn('Bank not found for card', cardByName.name, 'ScheduleViewModal');
           return;
         }
         
@@ -111,7 +106,7 @@ function groupSchedulesByBank(
         bankId = card.bankId;
         const bank = bankMap.get(bankId);
         if (!bank) {
-          console.warn('Bank not found for card:', card.name);
+          logWarn('Bank not found for card', card.name, 'ScheduleViewModal');
           return;
         }
         
@@ -130,16 +125,14 @@ function groupSchedulesByBank(
         );
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Bank search result:', {
-          bankName: scheduleItem.bankName,
-          bankFound: !!bank,
-          availableBankNames: banks.map(b => b.name)
-        });
-      }
+      logDebug('Bank search result', {
+        bankName: scheduleItem.bankName,
+        bankFound: !!bank,
+        availableBankNames: banks.map(b => b.name)
+      }, 'ScheduleViewModal');
       
       if (!bank) {
-        console.warn('Bank not found for scheduleItem:', scheduleItem.transactionId);
+        logWarn('Bank not found for scheduleItem', scheduleItem.transactionId, 'ScheduleViewModal');
         return;
       }
       
@@ -147,7 +140,7 @@ function groupSchedulesByBank(
       bankName = bank.name;
       displayName = '自動銀行振替';
     } else {
-      console.warn('Unknown payment type for scheduleItem:', scheduleItem.transactionId);
+      logWarn('Unknown payment type for scheduleItem', scheduleItem.transactionId, 'ScheduleViewModal');
       return;
     }
     
@@ -205,25 +198,23 @@ export function ScheduleViewModal({
   const bankGroups = groupSchedulesByBank(scheduleItems, banks, cards);
   
   // 詳細デバッグログ（開発環境のみ）
-  if (process.env.NODE_ENV === 'development') {
-    console.log('ScheduleViewModal Debug:', {
-      scheduleItemsCount: scheduleItems.length,
-      bankGroupsCount: bankGroups.length,
-      scheduleItems: scheduleItems.map(item => ({
-        id: item.transactionId,
-        paymentType: item.paymentType,
-        cardId: item.cardId,
-        cardIdType: typeof item.cardId,
-        cardName: item.cardName,
-        bankName: item.bankName,
-        amount: item.amount
-      })),
-      banks: banks.map(bank => ({ id: bank.id, idType: typeof bank.id, name: bank.name })),
-      cards: cards.map(card => ({ id: card.id, idType: typeof card.id, name: card.name, bankId: card.bankId })),
-      banksCount: banks.length,
-      cardsCount: cards.length
-    });
-  }
+  logDebug('ScheduleViewModal Debug', {
+    scheduleItemsCount: scheduleItems.length,
+    bankGroupsCount: bankGroups.length,
+    scheduleItems: scheduleItems.map(item => ({
+      id: item.transactionId,
+      paymentType: item.paymentType,
+      cardId: item.cardId,
+      cardIdType: typeof item.cardId,
+      cardName: item.cardName,
+      bankName: item.bankName,
+      amount: item.amount
+    })),
+    banks: banks.map(bank => ({ id: bank.id, idType: typeof bank.id, name: bank.name })),
+    cards: cards.map(card => ({ id: card.id, idType: typeof card.id, name: card.name, bankId: card.bankId })),
+    banksCount: banks.length,
+    cardsCount: cards.length
+  }, 'ScheduleViewModal');
   
   // 総合計算
   const totalAmount = scheduleItems.reduce((sum, scheduleItem) => sum + scheduleItem.amount, 0);

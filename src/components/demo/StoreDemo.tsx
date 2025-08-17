@@ -11,6 +11,7 @@ import {
   useHasError 
 } from '@/store';
 import { useModalManagerAdapter } from '@/hooks/modal/useModalManagerAdapter';
+import { logDebug } from '@/lib/utils/logger';
 
 /**
  * Demo component showcasing the new store functionality
@@ -30,10 +31,10 @@ const StoreDemo = memo(() => {
   // Example 2: Adapter usage for backward compatibility
   const modalManager = useModalManagerAdapter({
     onTransactionSave: async (transactionInput) => {
-      console.log('Transaction saved via adapter:', transactionInput);
+      logDebug('Transaction saved via adapter', transactionInput, 'StoreDemo');
     },
     onTransactionDelete: async (transactionId) => {
-      console.log('Transaction deleted via adapter:', transactionId);
+      logDebug('Transaction deleted via adapter', transactionId, 'StoreDemo');
     },
   });
   
@@ -236,7 +237,7 @@ const StoreDemo = memo(() => {
           <div>
             <h3 className="font-medium">4. Optimized Hooks:</h3>
             <code className="bg-white p-2 rounded block">
-              const isLoading = useIsLoading('transactions');
+              const isLoading = useIsLoading(&apos;transactions&apos;);
             </code>
           </div>
         </div>

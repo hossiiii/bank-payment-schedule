@@ -7,6 +7,7 @@ import { useBanks, useCards, useTransactions, useMonthlySchedule } from '@/lib/h
 import { Transaction, TransactionInput, ScheduleItem } from '@/types/database';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
 import { useModalManager } from '../hooks/modal/useModalManager';
+import { logError, logDebug } from '@/lib/utils/logger';
 
 export default function CalendarPage() {
   // Current month state
@@ -61,7 +62,7 @@ export default function CalendarPage() {
           refetchSchedule()
         ]);
       } catch (error) {
-        console.error('Failed to save transaction:', error);
+        logError('Failed to save transaction', error, 'CalendarPage');
         throw error;
       }
     },
@@ -75,27 +76,27 @@ export default function CalendarPage() {
           refetchSchedule()
         ]);
       } catch (error) {
-        console.error('Failed to delete transaction:', error);
+        logError('Failed to delete transaction', error, 'CalendarPage');
         throw error;
       }
     },
     onScheduleSave: async (scheduleId: string, updates: Partial<ScheduleItem>) => {
       try {
         // TODO: Implement schedule update functionality
-        console.log('Schedule update:', { scheduleId, updates });
+        logDebug('Schedule update', { scheduleId, updates }, 'CalendarPage');
         // await updateScheduleItem(scheduleId, updates);
       } catch (error) {
-        console.error('Failed to save schedule:', error);
+        logError('Failed to save schedule', error, 'CalendarPage');
         throw error;
       }
     },
     onScheduleDelete: async (scheduleId: string) => {
       try {
         // TODO: Implement schedule delete functionality
-        console.log('Schedule delete:', scheduleId);
+        logDebug('Schedule delete', scheduleId, 'CalendarPage');
         // await deleteScheduleItem(scheduleId);
       } catch (error) {
-        console.error('Failed to delete schedule:', error);
+        logError('Failed to delete schedule', error, 'CalendarPage');
         throw error;
       }
     },
@@ -117,10 +118,10 @@ export default function CalendarPage() {
           // TransactionModalを開く
           modalManager.openTransactionModal(new Date(transaction.date), transaction);
         } else {
-          console.error('Transaction not found:', transactionId);
+          logError('Transaction not found', { transactionId }, 'CalendarPage');
         }
       } catch (error) {
-        console.error('Failed to get transaction:', error);
+        logError('Failed to get transaction', error, 'CalendarPage');
       }
     },
     banks,

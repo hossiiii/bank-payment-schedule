@@ -5,6 +5,7 @@ import { DatabaseMigrationError, DatabaseInitializationError } from './errors';
 import { VersionManager } from './versionManager';
 import { initializeMigrationErrorHandling, handleMigrationError } from './migrationHandler';
 import { generateDexieEncryptionConfig } from './encryptionConfig';
+import { logDebug, logWarn, logError, logInfo } from '@/lib/utils/logger';
 
 // Database schema version (match current database version)
 // Version 12: Added encryption support with dexie-encrypted middleware
@@ -43,7 +44,7 @@ export class PaymentDatabase extends Dexie {
       try {
         // Record migration attempt
         const fromVersion = await VersionManager.getCurrentVersion();
-        console.log(`Migrating database from v${fromVersion} to v${CURRENT_VERSION}`);
+        logInfo(`Migrating database from v${fromVersion} to v${CURRENT_VERSION}`, undefined, 'PaymentDatabase');
         
         // Migrate existing transactions to new schema
         await tx.table('transactions').toCollection().modify(transaction => {
@@ -94,53 +95,54 @@ export class PaymentDatabase extends Dexie {
   async setupEncryption(sessionManager?: SessionKeyManager): Promise<void> {
     // Skip encryption in test environment
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-      console.log('Skipping encryption setup in test environment');
+      logDebug('Skipping encryption setup in test environment', undefined, 'PaymentDatabase');
       return;
     }
     
     // Skip if already applied
     if (this.encryptionMiddlewareApplied) {
-      console.log('Encryption middleware already applied, skipping');
+      logDebug('Encryption middleware already applied, skipping', undefined, 'PaymentDatabase');
       return;
     }
     
     try {
-      console.log('Starting encryption setup...');
+      logDebug('Starting encryption setup...', undefined, 'PaymentDatabase');
       
       // Dynamically import dexie-encrypted to avoid issues in test environment
       const dexieEncrypted = await import('dexie-encrypted');
       const { applyEncryptionMiddleware, clearEncryptedTables } = dexieEncrypted;
       // Try different ways to access encrypt
       const encrypt = (dexieEncrypted as any).encrypt || (dexieEncrypted as any).default?.encrypt || dexieEncrypted;
-      console.log('Available exports:', Object.keys(dexieEncrypted));
-      console.log('encrypt object:', encrypt);
-      console.log('dexie-encrypted imported successfully');
+      logDebug('dexie-encrypted imported successfully', {
+        availableExports: Object.keys(dexieEncrypted),
+        encryptObject: !!encrypt
+      }, 'PaymentDatabase');
       
       // Use provided session manager or create new one
       const manager = sessionManager || new SessionKeyManager();
-      console.log('Session manager:', sessionManager ? 'provided' : 'created new');
+      logDebug('Session manager status', { provided: !!sessionManager }, 'PaymentDatabase');
       
       if (!manager.hasActiveSession()) {
         throw new Error('No active encryption session available');
       }
-      console.log('Active session found');
+      logDebug('Active session found', undefined, 'PaymentDatabase');
       
       // Export raw key for dexie-encrypted
       const rawKey = await manager.exportRawSessionKey();
-      console.log('Raw key exported, length:', rawKey.byteLength);
+      logDebug('Raw key exported', { keyLength: rawKey.byteLength }, 'PaymentDatabase');
       
       // Generate encryption configuration dynamically
       const encryptionConfig = generateDexieEncryptionConfig(encrypt);
-      console.log('Generated encryption config:', encryptionConfig);
+      logDebug('Generated encryption config', encryptionConfig, 'PaymentDatabase');
       
       // Apply encryption middleware with configuration
       // The 4th parameter is onKeyChange callback - we'll use the clearEncryptedTables option
       applyEncryptionMiddleware(this, rawKey, encryptionConfig as any, clearEncryptedTables);
       
       this.encryptionMiddlewareApplied = true;
-      console.log('Database encryption middleware applied successfully');
+      logDebug('Database encryption middleware applied successfully', undefined, 'PaymentDatabase');
     } catch (error) {
-      console.error('Detailed encryption setup error:', error);
+      logError('Detailed encryption setup error', error, 'PaymentDatabase');
       throw new DatabaseInitializationError(
         'Failed to setup database encryption',
         error as Error
@@ -156,11 +158,11 @@ export class PaymentDatabase extends Dexie {
       // Check if migration is needed
       const currentDbVersion = await VersionManager.getCurrentVersion();
       if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
-        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        logInfo(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`, undefined, 'PaymentDatabase');
         
         // Check if backup is recommended
         if (VersionManager.isBackupRecommended()) {
-          console.warn('Backup recommended before migration');
+          logWarn('Backup recommended before migration', undefined, 'PaymentDatabase');
         }
       }
       
@@ -173,7 +175,7 @@ export class PaymentDatabase extends Dexie {
       // Sample data seeding removed - database starts empty
       
     } catch (error) {
-      console.error('Failed to initialize database:', error);
+      logError('Failed to initialize database', error, 'PaymentDatabase');
       
       // Check if it's a migration error
       if (error instanceof DatabaseMigrationError) {
@@ -200,11 +202,11 @@ export class PaymentDatabase extends Dexie {
       // Check if migration is needed
       const currentDbVersion = await VersionManager.getCurrentVersion();
       if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
-        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        logInfo(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`, undefined, 'PaymentDatabase');
         
         // Check if backup is recommended
         if (VersionManager.isBackupRecommended()) {
-          console.warn('Backup recommended before migration');
+          logWarn('Backup recommended before migration', undefined, 'PaymentDatabase');
         }
       }
       
@@ -220,7 +222,7 @@ export class PaymentDatabase extends Dexie {
       // Sample data seeding removed - database starts empty
       
     } catch (error) {
-      console.error('Failed to initialize encrypted database:', error);
+      logError('Failed to initialize encrypted database', error, 'PaymentDatabase');
       
       // Check if it's a migration error
       if (error instanceof DatabaseMigrationError) {
@@ -250,11 +252,11 @@ export class PaymentDatabase extends Dexie {
       // Check if migration is needed
       const currentDbVersion = await VersionManager.getCurrentVersion();
       if (currentDbVersion !== null && currentDbVersion < CURRENT_VERSION) {
-        console.log(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`);
+        logInfo(`Database migration needed: v${currentDbVersion} -> v${CURRENT_VERSION}`, undefined, 'PaymentDatabase');
         
         // Check if backup is recommended
         if (VersionManager.isBackupRecommended()) {
-          console.warn('Backup recommended before migration');
+          logWarn('Backup recommended before migration', undefined, 'PaymentDatabase');
         }
       }
       
@@ -277,7 +279,7 @@ export class PaymentDatabase extends Dexie {
       // Sample data seeding removed - database starts empty
       
     } catch (error) {
-      console.error('Failed to initialize encrypted database:', error);
+      logError('Failed to initialize encrypted database', error, 'PaymentDatabase');
       
       // Check if it's a migration error
       if (error instanceof DatabaseMigrationError) {
@@ -356,7 +358,7 @@ export class PaymentDatabase extends Dexie {
    */
   async seedSampleData(): Promise<void> {
     // No sample data - database starts empty
-    console.log('Sample data seeding disabled - database starts empty');
+    logDebug('Sample data seeding disabled - database starts empty', undefined, 'PaymentDatabase');
   }
   
   /**

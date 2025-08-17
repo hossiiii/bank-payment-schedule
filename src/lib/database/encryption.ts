@@ -1,4 +1,5 @@
 import { EncryptionError } from '@/types/database';
+import { logDebug, logError } from '@/lib/utils/logger';
 
 // Constants for encryption
 const PBKDF2_ITERATIONS = 100000; // High iteration count for security
@@ -301,30 +302,32 @@ export class SessionKeyManager {
    * Verify password against stored credentials and return derived key if valid
    */
   async verifyPassword(password: string): Promise<EncryptionKey | null> {
-    console.log('SessionKeyManager.verifyPassword called with password length:', password.length);
-    console.log('Stored key hash exists:', !!this.storedKeyHash);
-    console.log('Stored salt exists:', !!this.storedSalt);
+    logDebug('SessionKeyManager.verifyPassword called', {
+      passwordLength: password.length,
+      storedKeyHashExists: !!this.storedKeyHash,
+      storedSaltExists: !!this.storedSalt
+    }, 'SessionKeyManager');
     
     if (!this.storedKeyHash || !this.storedSalt) {
-      console.log('Missing stored credentials');
+      logDebug('Missing stored credentials', undefined, 'SessionKeyManager');
       return null;
     }
     
     try {
       // Use stored salt to derive key from password
       const storedSaltBytes = base64ToArrayBuffer(this.storedSalt);
-      console.log('Stored salt bytes length:', storedSaltBytes.byteLength);
+      logDebug('Stored salt bytes length', { length: storedSaltBytes.byteLength }, 'SessionKeyManager');
       
       const derivedKey = await deriveKeyFromPassword(password, new Uint8Array(storedSaltBytes));
-      console.log('Key derived successfully');
+      logDebug('Key derived successfully', undefined, 'SessionKeyManager');
       
       // Compare with stored hash
       const isValid = await this.verifyKeyHash(derivedKey);
-      console.log('Key hash verification result:', isValid);
+      logDebug('Key hash verification result', { isValid }, 'SessionKeyManager');
       
       return isValid ? derivedKey : null;
     } catch (error) {
-      console.error('Error in verifyPassword:', error);
+      logError('Error in verifyPassword', error, 'SessionKeyManager');
       return null;
     }
   }

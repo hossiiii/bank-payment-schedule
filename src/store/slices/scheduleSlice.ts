@@ -3,6 +3,7 @@ import {
   ScheduleSlice, 
   ScheduleCache, 
   CACHE_DURATIONS,
+  LoadingStates,
   AppStore 
 } from '../types';
 import { 
@@ -48,10 +49,10 @@ export const createScheduleSlice: StateCreator<
   schedules: {},
   scheduleCache: {},
   
-  actions: {
+  scheduleActions: {
     // Fetch monthly schedule with caching
     fetchMonthlySchedule: async (year: number, month: number) => {
-      const { actions: uiActions } = get();
+      const { uiActions } = get();
       
       return await uiActions.withAsyncOperation('schedules', async () => {
         const state = get();
@@ -96,7 +97,7 @@ export const createScheduleSlice: StateCreator<
 
     // Update a schedule item
     updateScheduleItem: async (scheduleId: string, updates: Partial<ScheduleItem>) => {
-      const { actions: uiActions, actions: transactionActions } = get();
+      const { uiActions, transactionActions } = get();
       
       await uiActions.withAsyncOperation('saving', async () => {
         // For schedule items, we need to update the underlying transaction
@@ -127,7 +128,7 @@ export const createScheduleSlice: StateCreator<
         await transactionOperations.update(scheduleId, transactionUpdates);
         
         // Invalidate schedule cache since it's derived from transactions
-        get().actions.invalidateScheduleCache();
+        get().scheduleActions.invalidateScheduleCache();
         
         // Also invalidate transaction cache
         transactionActions.invalidateTransactionCache();
@@ -136,14 +137,14 @@ export const createScheduleSlice: StateCreator<
 
     // Delete a schedule item (which deletes the underlying transaction)
     deleteScheduleItem: async (scheduleId: string) => {
-      const { actions: uiActions, actions: transactionActions } = get();
+      const { uiActions, transactionActions } = get();
       
       await uiActions.withAsyncOperation('deleting', async () => {
         // Delete the underlying transaction
         await transactionOperations.delete(scheduleId);
         
         // Invalidate caches
-        get().actions.invalidateScheduleCache();
+        get().scheduleActions.invalidateScheduleCache();
         transactionActions.invalidateTransactionCache();
       });
     },
@@ -181,6 +182,20 @@ export const createScheduleSlice: StateCreator<
         scheduleCache: {},
         schedules: {},
       });
+    },
+
+    // Cross-store operations
+    withAsyncOperation: async <T>(
+      operationKey: keyof LoadingStates,
+      operation: () => Promise<T>
+    ): Promise<T> => {
+      const { uiActions } = get();
+      return await uiActions.withAsyncOperation(operationKey, operation);
+    },
+
+    invalidateTransactionCache: (key?: string) => {
+      const { transactionActions } = get();
+      transactionActions.invalidateTransactionCache(key);
     },
   },
 });

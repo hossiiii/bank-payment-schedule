@@ -9,6 +9,7 @@ import { PasswordSetup } from './PasswordSetup';
 import { SessionLock } from './SessionLock';
 import { SessionIndicator } from './SessionStatus';
 import { MigrationDialog } from './MigrationDialog';
+import { logDebug } from '@/lib/utils/logger';
 
 interface EncryptionProviderProps {
   children: React.ReactNode;
@@ -16,7 +17,7 @@ interface EncryptionProviderProps {
 
 function EncryptionProviderInner({ children }: EncryptionProviderProps) {
   const { isUnlocked, hasStoredKey, isLoading } = useEncryptionContext();
-  console.log('EncryptionProviderInner render:', { isUnlocked, hasStoredKey, isLoading });
+  logDebug('EncryptionProviderInner render', { isUnlocked, hasStoredKey, isLoading }, 'EncryptionProvider');
   const [showMigration, setShowMigration] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [warningSeconds, setWarningSeconds] = useState(120);

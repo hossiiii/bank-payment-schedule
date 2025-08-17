@@ -30,7 +30,7 @@ export const createUISlice: StateCreator<
   loading: initialLoadingStates,
   errors: initialErrorStates,
   
-  actions: {
+  uiActions: {
     // Set loading state for a specific operation
     setLoading: (key: keyof LoadingStates, loading: boolean) => {
       set((state) => ({
@@ -67,6 +67,35 @@ export const createUISlice: StateCreator<
         },
       }));
     },
+
+    // Async operation wrapper with loading/error handling
+    withAsyncOperation: async <T>(
+      operationKey: keyof LoadingStates,
+      operation: () => Promise<T>
+    ): Promise<T> => {
+      const { uiActions } = get();
+      
+      try {
+        // Set loading state
+        uiActions.setLoading(operationKey, true);
+        uiActions.clearError(operationKey as keyof ErrorStates);
+        
+        // Execute operation
+        const result = await operation();
+        
+        return result;
+      } catch (error) {
+        // Set error state
+        uiActions.setError(
+          operationKey as keyof ErrorStates, 
+          error as DatabaseError
+        );
+        throw error;
+      } finally {
+        // Clear loading state
+        uiActions.setLoading(operationKey, false);
+      }
+    },
   },
 });
 
@@ -77,12 +106,12 @@ export const createUIHelpers = (get: () => AppStore) => ({
     operationKey: keyof LoadingStates,
     operation: () => Promise<T>
   ): Promise<T> => {
-    const { actions } = get();
+    const { uiActions } = get();
     
     try {
       // Set loading state
-      actions.setLoading(operationKey, true);
-      actions.clearError(operationKey as keyof ErrorStates);
+      uiActions.setLoading(operationKey, true);
+      uiActions.clearError(operationKey as keyof ErrorStates);
       
       // Execute operation
       const result = await operation();
@@ -90,14 +119,14 @@ export const createUIHelpers = (get: () => AppStore) => ({
       return result;
     } catch (error) {
       // Set error state
-      actions.setError(
+      uiActions.setError(
         operationKey as keyof ErrorStates, 
         error as DatabaseError
       );
       throw error;
     } finally {
       // Clear loading state
-      actions.setLoading(operationKey, false);
+      uiActions.setLoading(operationKey, false);
     }
   },
 

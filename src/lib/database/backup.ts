@@ -4,6 +4,7 @@
 
 import { getDatabase } from './schema';
 import { Bank, Card, Transaction } from '@/types/database';
+import { logDebug, logError } from '@/lib/utils/logger';
 
 export interface DatabaseBackup {
   version: number;
@@ -44,7 +45,7 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
       }
     };
   } catch (error) {
-    console.error('Failed to export database:', error);
+    logError('Failed to export database:', error);
     throw new Error('データのエクスポートに失敗しました');
   }
 }
@@ -83,9 +84,9 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
       ]);
     });
     
-    console.log('Database imported successfully');
+    logDebug('Database imported successfully');
   } catch (error) {
-    console.error('Failed to import database:', error);
+    logError('Failed to import database:', error);
     throw new Error('データのインポートに失敗しました');
   }
 }
