@@ -38,7 +38,7 @@ export const useStoreActions = () => {
     // Modal actions with enhanced API
     modal: {
       ...store.modalActions,
-      ...createModalActions(useAppStore.getState, useAppStore.setState),
+      ...createModalActions(useAppStore.getState),
     },
     
     // Transaction actions with enhanced API
@@ -153,7 +153,7 @@ export const useHasError = (key?: keyof AppStore['errors']) => {
 
 // Store initialization and cleanup (non-hook functions)
 export const initializeStore = async () => {
-  const state = useAppStore.getState();
+  // const state = useAppStore.getState();
   
   try {
     // Initialize with basic data - these would need to be implemented in the slices

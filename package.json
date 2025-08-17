@@ -25,11 +25,7 @@
     "test:e2e:firefox": "playwright test --project=firefox",
     "test:e2e:safari": "playwright test --project=webkit",
     "test:e2e:mobile": "playwright test --project='Mobile Chrome'",
-    "test:e2e:pwa": "playwright test --project='PWA Chrome'",
-    "test:comprehensive": "node __tests__/scripts/run-comprehensive-tests.js",
-    "test:comprehensive:fast": "node __tests__/scripts/run-comprehensive-tests.js --fast",
-    "test:comprehensive:unit": "node __tests__/scripts/run-comprehensive-tests.js --unit-only",
-    "test:comprehensive:e2e": "node __tests__/scripts/run-comprehensive-tests.js --e2e-only"
+    "test:e2e:pwa": "playwright test --project='PWA Chrome'"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.8",

@@ -19,13 +19,18 @@ class Logger {
   private maxLogs = 100;
 
   private createLogEntry(level: LogLevel, message: string, data?: any, component?: string): LogEntry {
-    return {
+    const entry: LogEntry = {
       level,
       message,
       data,
       timestamp: new Date(),
-      component,
     };
+    
+    if (component !== undefined) {
+      entry.component = component;
+    }
+    
+    return entry;
   }
 
   private shouldLog(level: LogLevel): boolean {

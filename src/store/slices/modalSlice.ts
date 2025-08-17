@@ -113,13 +113,13 @@ export const createModalSlice: StateCreator<
 
     // Cross-modal operation: Transaction view modal -> Transaction modal
     handleTransactionViewTransactionClick: (transaction: Transaction) => {
-      const { actions } = get();
+      const store = get();
       
       // Close transaction view modal
-      actions.closeModal('transactionView');
+      store.modalActions.closeModal('transactionView');
       
       // Open transaction modal with the selected transaction
-      actions.openModal('transaction', {
+      store.modalActions.openModal('transaction', {
         date: new Date(transaction.date),
         transaction: transaction,
       });
@@ -158,7 +158,7 @@ export const createModalSlice: StateCreator<
 });
 
 // Convenience functions that match the original useModalManager API
-export const createModalActions = (get: () => AppStore, set: (partial: Partial<AppStore>) => void) => ({
+export const createModalActions = (get: () => AppStore) => ({
   // Individual modal openers
   openTransactionModal: (date: Date, transaction?: Transaction) => {
     get().modalActions.openModal('transaction', { date, transaction: transaction || null });
@@ -181,12 +181,12 @@ export const createModalActions = (get: () => AppStore, set: (partial: Partial<A
   },
 
   // Individual modal closers
-  closeTransactionModal: () => get().actions.closeModal('transaction'),
-  closeTransactionViewModal: () => get().actions.closeModal('transactionView'),
-  closeScheduleViewModal: () => get().actions.closeModal('scheduleView'),
-  closeScheduleEditModal: () => get().actions.closeModal('scheduleEdit'),
-  closeDayTotalModal: () => get().actions.closeModal('dayTotal'),
-  closeAllModals: () => get().actions.closeAllModals(),
+  closeTransactionModal: () => get().modalActions.closeModal('transaction'),
+  closeTransactionViewModal: () => get().modalActions.closeModal('transactionView'),
+  closeScheduleViewModal: () => get().modalActions.closeModal('scheduleView'),
+  closeScheduleEditModal: () => get().modalActions.closeModal('scheduleEdit'),
+  closeDayTotalModal: () => get().modalActions.closeModal('dayTotal'),
+  closeAllModals: () => get().modalActions.closeAllModals(),
 
   // Cross-modal handlers
   handleTransactionViewTransactionClick: (transaction: Transaction) => {
@@ -194,6 +194,6 @@ export const createModalActions = (get: () => AppStore, set: (partial: Partial<A
   },
 
   handleScheduleTransactionClick: async (transactionId: string) => {
-    await get().actions.handleScheduleTransactionClick(transactionId);
+    await get().modalActions.handleScheduleTransactionClick(transactionId);
   },
 });

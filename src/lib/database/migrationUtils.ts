@@ -1,7 +1,7 @@
 import { getDatabase } from './schema';
 import { SessionKeyManager, deriveKeyFromPassword } from './encryption';
 import { Bank, Card, Transaction } from '@/types/database';
-import { logDebug, logError, logInfo } from '@/lib/utils/logger';
+import { logError, logInfo } from '@/lib/utils/logger';
 
 /**
  * Data migration utilities for transitioning from unencrypted to encrypted database

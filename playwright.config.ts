@@ -22,7 +22,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 4,
   
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -219,7 +219,7 @@ export default defineConfig({
   },
 
   /* Run your local dev server before starting the tests */
-  webServer: process.env.CI ? undefined : {
+  webServer: process.env.CI ? [] : {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
@@ -236,8 +236,8 @@ export default defineConfig({
   globalTimeout: 60000 * 10, // 10 minutes total
   
   /* Grep settings for filtering tests */
-  grep: process.env.PLAYWRIGHT_GREP ? new RegExp(process.env.PLAYWRIGHT_GREP) : undefined,
-  grepInvert: process.env.PLAYWRIGHT_GREP_INVERT ? new RegExp(process.env.PLAYWRIGHT_GREP_INVERT) : undefined,
+  ...(process.env.PLAYWRIGHT_GREP ? { grep: new RegExp(process.env.PLAYWRIGHT_GREP) } : {}),
+  ...(process.env.PLAYWRIGHT_GREP_INVERT ? { grepInvert: new RegExp(process.env.PLAYWRIGHT_GREP_INVERT) } : {}),
 
   /* Metadata for test reporting */
   metadata: {

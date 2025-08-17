@@ -8,8 +8,7 @@ import {
 } from '../types';
 import { 
   MonthlySchedule, 
-  ScheduleItem,
-  DatabaseError 
+  ScheduleItem
 } from '@/types/database';
 import { transactionOperations } from '@/lib/database';
 
@@ -24,7 +23,7 @@ const createScheduleMapKey = (year: number, month: number): string => {
 
 const isCacheValid = (cache: ScheduleCache, key: string): boolean => {
   const item = cache[key];
-  return item && Date.now() < item.expiresAt;
+  return Boolean(item && Date.now() < item.expiresAt);
 };
 
 const setCacheItem = (
@@ -61,17 +60,19 @@ export const createScheduleSlice: StateCreator<
         
         // Check cache first
         if (isCacheValid(state.scheduleCache, cacheKey)) {
-          const cachedData = state.scheduleCache[cacheKey].data;
+          const cachedData = state.scheduleCache[cacheKey]?.data;
           
-          // Update schedules map
-          set((state) => ({
-            schedules: {
-              ...state.schedules,
-              [mapKey]: cachedData,
-            },
-          }));
-          
-          return cachedData;
+          if (cachedData) {
+            // Update schedules map
+            set((state) => ({
+              schedules: {
+                ...state.schedules,
+                [mapKey]: cachedData,
+              },
+            }));
+            
+            return cachedData;
+          }
         }
         
         // Fetch from database

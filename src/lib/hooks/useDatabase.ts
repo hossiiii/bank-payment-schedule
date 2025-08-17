@@ -243,7 +243,7 @@ export function useBanks() {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchBanks]);
+  }, []);
   
   return {
     banks: state.data,
@@ -423,7 +423,7 @@ export function useCards(bankId?: string) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchCards]);
+  }, [bankId]);
   
   const bulkUpdateCards = useCallback(async (updates: Map<string, Partial<CardInput>>): Promise<void> => {
     try {
@@ -443,7 +443,7 @@ export function useCards(bankId?: string) {
       }));
       throw error;
     }
-  }, [fetchCards]);
+  }, [bankId]);
 
   return {
     cards: state.data,
@@ -503,7 +503,7 @@ export function useTransactions(filters?: TransactionFilters) {
       }
       throw error;
     }
-  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.paymentType, filters?.bankId, filters?.cardId, filters?.isScheduleEditable]);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
   
   const createTransaction = useCallback(async (transactionData: TransactionInput): Promise<Transaction> => {
     try {
@@ -633,7 +633,7 @@ export function useTransactions(filters?: TransactionFilters) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchTransactions]);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
   
   const bulkUpdateTransactions = useCallback(async (updates: Map<string, { scheduledPayDate: number }>): Promise<void> => {
     try {
@@ -653,7 +653,7 @@ export function useTransactions(filters?: TransactionFilters) {
       }));
       throw error;
     }
-  }, [fetchTransactions]);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
 
   return {
     transactions: state.data,
@@ -705,7 +705,7 @@ export function useMonthlySchedule(year: number, month: number) {
   
   useEffect(() => {
     fetchSchedule();
-  }, [fetchSchedule]);
+  }, [year, month]);
   
   return {
     schedule: state.data,
@@ -764,7 +764,7 @@ export function useTransaction(transactionId?: string) {
     } else {
       setState({ data: null, isLoading: false, error: null });
     }
-  }, [transactionId, fetchTransaction]);
+  }, [transactionId]);
   
   return {
     transaction: state.data,
@@ -829,7 +829,7 @@ export function useDatabaseStats() {
   
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+  }, []);
   
   return {
     stats,

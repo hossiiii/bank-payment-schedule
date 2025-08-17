@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { 
   useAppStore, 
   useStoreActions, 
-  selectors 
+  selectors,
+  derivedSelectors
 } from '@/store';
 import { 
   ModalManagerConfig, 
@@ -224,11 +225,11 @@ export function useStoreComputedState() {
     isAnyModalOpen: useAppStore(selectors.modal.isAnyModalOpen),
     
     // Transaction statistics
-    transactionStats: useAppStore(selectors.derivedSelectors.getTransactionStats),
-    currentMonthSummary: useAppStore(selectors.derivedSelectors.getCurrentMonthSummary),
+    transactionStats: useAppStore(derivedSelectors.getTransactionStats),
+    currentMonthSummary: useAppStore(derivedSelectors.getCurrentMonthSummary),
     
     // Loading status
-    loadingStatus: useAppStore(selectors.derivedSelectors.getLoadingStatus),
+    loadingStatus: useAppStore(derivedSelectors.getLoadingStatus),
     
     // Upcoming schedules
     upcomingScheduleItems: useAppStore(selectors.schedule.getUpcomingScheduleItems),

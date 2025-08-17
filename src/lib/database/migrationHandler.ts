@@ -8,7 +8,7 @@ import {
   type MigrationErrorRecoveryOptions 
 } from './errors';
 import { VersionManager } from './versionManager';
-import { logDebug, logError, logWarn, logInfo } from '@/lib/utils/logger';
+import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 import { exportDatabase } from './operations';
 import type { PaymentDatabase } from './schema';
 

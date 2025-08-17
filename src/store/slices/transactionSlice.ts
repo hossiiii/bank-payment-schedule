@@ -11,8 +11,7 @@ import {
   TransactionInput, 
   Bank, 
   Card, 
-  TransactionFilters,
-  DatabaseError 
+  TransactionFilters
 } from '@/types/database';
 import { 
   bankOperations, 
@@ -27,7 +26,7 @@ const createCacheKey = (filters?: TransactionFilters): string => {
 
 const isCacheValid = (cache: TransactionCache, key: string): boolean => {
   const item = cache[key];
-  return item && Date.now() < item.expiresAt;
+  return Boolean(item && Date.now() < item.expiresAt);
 };
 
 const setCacheItem = (
@@ -65,13 +64,15 @@ export const createTransactionSlice: StateCreator<
         
         // Check cache first
         if (isCacheValid(state.transactionCache, cacheKey)) {
-          const cachedData = state.transactionCache[cacheKey].data;
-          set({ transactions: cachedData });
-          return cachedData;
+          const cachedData = state.transactionCache[cacheKey]?.data;
+          if (cachedData) {
+            set({ transactions: cachedData });
+            return cachedData;
+          }
         }
         
         // Fetch from database
-        const transactionFilters: TransactionFilters = filters ? {
+        const transactionFilters: TransactionFilters | undefined = filters && filters.dateRange ? {
           dateRange: filters.dateRange,
         } : undefined;
         
@@ -108,7 +109,7 @@ export const createTransactionSlice: StateCreator<
           }));
         }
         
-        return transaction;
+        return transaction || null;
       });
     },
 
@@ -238,9 +239,8 @@ export const createTransactionHelpers = (get: () => AppStore, set: (partial: Par
       const cards = await cardOperations.getByBankId(bankId);
       
       // Update cards in state, merging with existing cards from other banks
-      set((state) => {
-        const existingCards = state.cards.filter(c => c.bankId !== bankId);
-        return { cards: [...existingCards, ...cards] };
+      set({ 
+        cards: [...get().cards.filter(c => c.bankId !== bankId), ...cards]
       });
       
       return cards;

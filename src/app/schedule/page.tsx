@@ -10,7 +10,7 @@ import { useBanks, useMonthlySchedule } from '@/lib/hooks/useDatabase';
 import { useFilteredSchedule } from '@/lib/hooks/useFilteredSchedule';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
 import { TransactionDetailModalData } from '@/types/schedule';
-import { ScheduleItem, Bank, Transaction } from '@/types/database';
+import { ScheduleItem } from '@/types/database';
 
 export default function SchedulePage() {
   // Current month state
@@ -47,12 +47,14 @@ export default function SchedulePage() {
     scheduleData.items.forEach(item => {
       const dateKey = new Date(item.date).toISOString().split('T')[0];
       
+      if (!dateKey) return; // Skip invalid dates
+      
       if (!paymentsByDate.has(dateKey)) {
         paymentsByDate.set(dateKey, new Map());
       }
       
       const dateMap = paymentsByDate.get(dateKey)!;
-      const bankKey = item.bankId || 'unknown';
+      const bankKey = item.bankName || 'unknown';
       
       if (!dateMap.has(bankKey)) {
         dateMap.set(bankKey, []);
@@ -66,35 +68,38 @@ export default function SchedulePage() {
       const allTransactions = Array.from(bankMap.values()).flat();
       
       // Create bank payments for each bank
-      const bankPayments = Array.from(bankMap.entries()).map(([bankId, items]) => {
+      const bankPayments = Array.from(bankMap.entries()).map(([bankName, items]) => {
         const bankTotal = items.reduce((sum, item) => sum + item.amount, 0);
-        const bank = banks.find(b => b.id === bankId);
+        const bank = banks.find(b => b.name === bankName);
         
         return {
-          bankId,
-          bankName: bank?.name || 'その他',
-          amount: bankTotal
+          bankId: bank?.id || bankName,
+          bankName: bankName,
+          amount: bankTotal,
+          transactionCount: items.length
         };
       });
       
       // Convert schedule items to transaction format
       const transactions = allTransactions.map(item => ({
-        id: item.id,
-        date: item.date,
+        id: item.transactionId,
+        date: typeof item.date === 'number' ? item.date : item.date.getTime(),
         amount: item.amount,
         paymentType: item.cardId ? 'card' as const : 'bank' as const,
-        scheduledPayDate: item.date,
+        scheduledPayDate: typeof item.date === 'number' ? item.date : item.date.getTime(),
         createdAt: Date.now(),
-        storeName: item.description || '',
-        usage: item.memo || '',
-        cardId: item.cardId,
-        bankId: item.bankId,
+        storeName: item.storeName || '',
+        usage: item.usage || '',
+        ...(item.cardId && { cardId: item.cardId }),
+        ...(banks.find(b => b.name === item.bankName)?.id && { 
+          bankId: banks.find(b => b.name === item.bankName)!.id 
+        }),
         isScheduleEditable: item.isScheduleEditable ?? false
       }));
       
       const date = new Date(dateKey);
-      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-      const bankName = bankPayments.length > 0 ? bankPayments[0].bankName : 'その他';
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()] || '';
+      const bankName = bankPayments.length > 0 ? bankPayments[0]?.bankName || 'その他' : 'その他';
       
       return {
         date: dateKey,
@@ -118,8 +123,8 @@ export default function SchedulePage() {
         return {
           id: bt.bankId,
           name: bt.bankName,
-          memo: bank?.memo,
-          createdAt: bank?.createdAt || Date.now()
+          createdAt: bank?.createdAt || Date.now(),
+          ...(bank?.memo && { memo: bank.memo })
         };
       })
     };

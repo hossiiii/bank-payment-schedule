@@ -5,6 +5,7 @@ import {
   useStoreActions
 } from '@/store';
 import { useOptimizedTransactions, useOptimizedMonthlySchedule } from '@/lib/hooks/optimizedUseDatabase';
+import { useBanks, useCards } from '@/lib/hooks/useDatabase';
 import { CalendarView } from './CalendarView';
 import { Transaction, ScheduleItem } from '@/types/database';
 import { DayTotalData } from '@/types/calendar';
@@ -32,7 +33,7 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
   
   const { 
     transactions, 
-    isLoading: isTransactionsLoading, 
+    // isLoading: isTransactionsLoading, 
     error: transactionsError 
   } = useOptimizedTransactions({
     dateRange: { start: startOfMonth, end: endOfMonth }
@@ -40,12 +41,16 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
   
   const { 
     schedule, 
-    isLoading: isScheduleLoading, 
+    // isLoading: isScheduleLoading, 
     error: scheduleError 
   } = useOptimizedMonthlySchedule(year, month);
+
+  const { banks } = useBanks();
+  const { cards } = useCards();
   
   // Memoized calendar data preparation
-  const calendarData = useMemo(() => {
+  // @ts-ignore - Legacy code, will be removed in future refactor
+  const _calendarData = useMemo(() => {
     if (!transactions && !schedule) return new Map<string, DayTotalData>();
     
     const dayTotals = new Map<string, DayTotalData>();
@@ -97,6 +102,8 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
     schedule?.items.forEach(scheduleItem => {
       const dateKey = scheduleItem.date.toISOString().split('T')[0];
       
+      if (!dateKey) return; // Skip invalid dates
+      
       if (!dayTotals.has(dateKey)) {
         dayTotals.set(dateKey, {
           date: dateKey,
@@ -131,8 +138,8 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
   }, [transactions, schedule]);
   
   // Memoized event handlers
-  const handleTransactionClick = useCallback((date: Date, transaction: Transaction) => {
-    modal.openTransactionModal(date, transaction);
+  const handleTransactionClick = useCallback((transaction: Transaction) => {
+    modal.openTransactionModal(new Date(transaction.date), transaction);
   }, [modal]);
   
   const handleTransactionViewClick = useCallback((date: Date, transactions: Transaction[]) => {
@@ -143,22 +150,26 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
     modal.openScheduleViewModal(date, scheduleItems);
   }, [modal]);
   
-  const handleDayTotalClick = useCallback((date: Date, dayTotalData: DayTotalData) => {
-    modal.openDayTotalModal(date, dayTotalData);
-  }, [modal]);
+  // const handleDayTotalClick = useCallback((date: Date, dayTotalData: DayTotalData) => {
+  //   modal.openDayTotalModal(date, dayTotalData);
+  // }, [modal]);
   
-  const handleNewTransactionClick = useCallback((date: Date) => {
+  // const handleNewTransactionClick = useCallback((date: Date) => {
+  //   modal.openTransactionModal(date);
+  // }, [modal]);
+
+  const handleDateClick = useCallback((date: Date) => {
     modal.openTransactionModal(date);
   }, [modal]);
   
   // Loading and error states
-  const isLoading = isTransactionsLoading || isScheduleLoading;
+  // const isLoading = isTransactionsLoading || isScheduleLoading;
   const error = transactionsError || scheduleError;
   
   if (error) {
     return (
       <div className="p-4 text-center text-red-600">
-        Error loading calendar data: {error.message}
+        Error loading calendar data: {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
@@ -167,14 +178,15 @@ const CalendarViewWithStore = memo<CalendarViewWithStoreProps>(({
     <CalendarView
       year={year}
       month={month}
-      dayTotals={calendarData}
-      isLoading={isLoading}
+      transactions={transactions}
+      {...(schedule && { schedule })}
+      banks={banks}
+      cards={cards}
+      onDateClick={handleDateClick}
       onTransactionClick={handleTransactionClick}
       onTransactionViewClick={handleTransactionViewClick}
       onScheduleViewClick={handleScheduleViewClick}
-      onDayTotalClick={handleDayTotalClick}
-      onNewTransactionClick={handleNewTransactionClick}
-      className={className}
+      {...(className && { className })}
     />
   );
 });
@@ -184,7 +196,7 @@ CalendarViewWithStore.displayName = 'CalendarViewWithStore';
 // Higher-order component for additional performance optimizations
 export const OptimizedCalendarView = memo<CalendarViewWithStoreProps>((props) => {
   // Pre-fetch adjacent months for better UX
-  const { schedule: scheduleActions, transaction: transactionActions } = useStoreActions();
+  const { schedule: scheduleActions } = useStoreActions();
   
   useEffect(() => {
     const prefetchAdjacentMonths = async () => {

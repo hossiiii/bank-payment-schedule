@@ -220,7 +220,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
         { originalError: error instanceof Error ? error : new Error(String(error)) }
       );
     }
-  }, [year, month, transactions, banks, cards]);
+  }, [year, month, transactions?.length, banks?.length, cards?.length]);
 
   const refetch = useCallback(async () => {
     if (error) {
@@ -265,7 +265,7 @@ export function useScheduleData(year: number, month: number): UseScheduleDataRes
         abortControllerRef.current.abort();
       }
     };
-  }, [year, month, isLoading, error, banks.length, refetch]);
+  }, [year, month, isLoading, error, banks.length]);
 
   // Handle dependency errors
   useEffect(() => {
@@ -307,7 +307,7 @@ export function useRealtimeScheduleData(year: number, month: number): UseSchedul
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [result]);
+  }, [result.refetch]);
 
   return result;
 }
@@ -316,9 +316,9 @@ export function useRealtimeScheduleData(year: number, month: number): UseSchedul
  * Hook for multiple months of schedule data (useful for yearly views)
  */
 export function useMultiMonthScheduleData(
-  startYear: number, 
-  startMonth: number, 
-  monthCount: number = 12
+  _startYear: number, 
+  _startMonth: number, 
+  _monthCount: number = 12
 ): {
   scheduleData: Map<string, PaymentScheduleView>;
   isLoading: boolean;
@@ -337,8 +337,8 @@ export function useMultiMonthScheduleData(
     
     try {
       // This is a simplified implementation - in a real app you might want to batch these
-      for (let i = 0; i < monthCount; i++) {
-        // const date = new Date(startYear, startMonth - 1 + i, 1);
+      for (let i = 0; i < _monthCount; i++) {
+        // const date = new Date(_startYear, _startMonth - 1 + i, 1);
         // const year = date.getFullYear();
         // const month = date.getMonth() + 1;
         
@@ -355,11 +355,11 @@ export function useMultiMonthScheduleData(
     } finally {
       setIsLoading(false);
     }
-  }, [monthCount]);
+  }, [_monthCount]);
 
   useEffect(() => {
     refetchAll();
-  }, [refetchAll]);
+  }, [_monthCount]);
 
   return {
     scheduleData: allData,

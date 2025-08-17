@@ -4,14 +4,7 @@ import {
   useStoreActions, 
   selectors 
 } from '@/store';
-import { 
-  Transaction, 
-  TransactionInput, 
-  Bank, 
-  Card, 
-  MonthlySchedule, 
-  TransactionFilters 
-} from '@/types/database';
+// import type { TransactionInput, MonthlySchedule, TransactionFilters } from '@/types/database';
 
 /**
  * Optimized database hook that replaces the original useDatabase hooks
@@ -21,8 +14,8 @@ import {
 // Optimized banks hook with memoization
 export function useOptimizedBanks() {
   const banks = useAppStore(selectors.transaction.getBanks);
-  const isLoading = useAppStore(selectors.ui.isLoading('banks'));
-  const error = useAppStore(selectors.ui.getError('banks'));
+  const isLoading = useAppStore((state) => selectors.ui.isLoading(state, 'banks'));
+  const error = useAppStore((state) => selectors.ui.getError(state, 'banks'));
   const { transaction } = useStoreActions();
   
   // Memoize the refetch function to prevent unnecessary re-renders
@@ -31,17 +24,17 @@ export function useOptimizedBanks() {
   }, [transaction]);
   
   // Memoize CRUD operations
-  const createBank = useCallback(async (bankData: any) => {
+  const createBank = useCallback(async (_bankData: any) => {
     // This would typically use the store's bank operations
     // For now, we'll delegate to the transaction actions
     throw new Error('Bank creation not implemented in store yet');
   }, []);
   
-  const updateBank = useCallback(async (id: string, updates: any) => {
+  const updateBank = useCallback(async (_id: string, _updates: any) => {
     throw new Error('Bank update not implemented in store yet');
   }, []);
   
-  const deleteBank = useCallback(async (id: string) => {
+  const deleteBank = useCallback(async (_id: string) => {
     throw new Error('Bank deletion not implemented in store yet');
   }, []);
   
@@ -59,8 +52,8 @@ export function useOptimizedBanks() {
 // Optimized cards hook with memoization
 export function useOptimizedCards(bankId?: string) {
   const allCards = useAppStore(selectors.transaction.getCards);
-  const isLoading = useAppStore(selectors.ui.isLoading('cards'));
-  const error = useAppStore(selectors.ui.getError('cards'));
+  const isLoading = useAppStore((state) => selectors.ui.isLoading(state, 'cards'));
+  const error = useAppStore((state) => selectors.ui.getError(state, 'cards'));
   const { transaction } = useStoreActions();
   
   // Memoize filtered cards when bankId is provided
@@ -77,19 +70,19 @@ export function useOptimizedCards(bankId?: string) {
   }, [transaction, bankId]);
   
   // Memoize CRUD operations
-  const createCard = useCallback(async (cardData: any) => {
+  const createCard = useCallback(async (_cardData: any) => {
     throw new Error('Card creation not implemented in store yet');
   }, []);
   
-  const updateCard = useCallback(async (id: string, updates: any) => {
+  const updateCard = useCallback(async (_id: string, _updates: any) => {
     throw new Error('Card update not implemented in store yet');
   }, []);
   
-  const deleteCard = useCallback(async (id: string) => {
+  const deleteCard = useCallback(async (_id: string) => {
     throw new Error('Card deletion not implemented in store yet');
   }, []);
   
-  const bulkUpdateCards = useCallback(async (updates: Map<string, any>) => {
+  const bulkUpdateCards = useCallback(async (_updates: Map<string, any>) => {
     throw new Error('Bulk card update not implemented in store yet');
   }, []);
   
@@ -106,10 +99,10 @@ export function useOptimizedCards(bankId?: string) {
 }
 
 // Optimized transactions hook with memoization
-export function useOptimizedTransactions(filters?: TransactionFilters) {
+export function useOptimizedTransactions(filters?: any) {
   const allTransactions = useAppStore(selectors.transaction.getTransactions);
-  const isLoading = useAppStore(selectors.ui.isLoading('transactions'));
-  const error = useAppStore(selectors.ui.getError('transactions'));
+  const isLoading = useAppStore((state) => selectors.ui.isLoading(state, 'transactions'));
+  const error = useAppStore((state) => selectors.ui.getError(state, 'transactions'));
   const { transaction } = useStoreActions();
   
   // Memoize filtered transactions
@@ -155,11 +148,11 @@ export function useOptimizedTransactions(filters?: TransactionFilters) {
   }, [transaction, filters]);
   
   // Memoize CRUD operations
-  const createTransaction = useCallback(async (transactionData: TransactionInput) => {
+  const createTransaction = useCallback(async (transactionData: any) => {
     return transaction.createTransaction(transactionData);
   }, [transaction]);
   
-  const updateTransaction = useCallback(async (id: string, updates: Partial<TransactionInput>) => {
+  const updateTransaction = useCallback(async (id: string, updates: any) => {
     return transaction.updateTransaction(id, updates);
   }, [transaction]);
   
@@ -167,7 +160,7 @@ export function useOptimizedTransactions(filters?: TransactionFilters) {
     return transaction.deleteTransaction(id);
   }, [transaction]);
   
-  const bulkUpdateTransactions = useCallback(async (updates: Map<string, { scheduledPayDate: number }>) => {
+  const bulkUpdateTransactions = useCallback(async (_updates: Map<string, { scheduledPayDate: number }>) => {
     // This would need to be implemented in the store
     throw new Error('Bulk transaction update not implemented in store yet');
   }, []);
@@ -196,8 +189,8 @@ export function useOptimizedTransactions(filters?: TransactionFilters) {
 // Optimized monthly schedule hook with memoization
 export function useOptimizedMonthlySchedule(year: number, month: number) {
   const schedule = useAppStore((state) => selectors.schedule.getMonthlySchedule(state, year, month));
-  const isLoading = useAppStore(selectors.ui.isLoading('schedules'));
-  const error = useAppStore(selectors.ui.getError('schedules'));
+  const isLoading = useAppStore((state) => selectors.ui.isLoading(state, 'schedules'));
+  const error = useAppStore((state) => selectors.ui.getError(state, 'schedules'));
   const { schedule: scheduleActions } = useStoreActions();
   
   const refetch = useCallback(() => {
@@ -217,8 +210,8 @@ export function useOptimizedTransaction(transactionId?: string) {
   const transaction = useAppStore((state) => 
     transactionId ? selectors.transaction.getTransactionById(state, transactionId) : null
   );
-  const isLoading = useAppStore(selectors.ui.isLoading('transactions'));
-  const error = useAppStore(selectors.ui.getError('transactions'));
+  const isLoading = useAppStore((state) => selectors.ui.isLoading(state, 'transactions'));
+  const error = useAppStore((state) => selectors.ui.getError(state, 'transactions'));
   const { transaction: transactionActions } = useStoreActions();
   
   const refetch = useCallback(() => {
