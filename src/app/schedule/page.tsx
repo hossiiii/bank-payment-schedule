@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BankScheduleTable, ScheduleSummary, MonthSelector } from '@/components/schedule';
 import { TopNavigation, Navigation, NavigationIcons } from '@/components/ui';
 import { TransactionDetailModal } from '@/components/schedule/TransactionDetailModal';
 import { MobileScheduleCard } from '@/components/schedule/MobileScheduleCard';
 import ScheduleFiltersComponent from '@/components/schedule/ScheduleFilters';
-import { useBanks } from '@/lib/hooks/useDatabase';
-import { useScheduleData } from '@/lib/hooks/useScheduleData';
+import { useBanks, useMonthlySchedule } from '@/lib/hooks/useDatabase';
 import { useFilteredSchedule } from '@/lib/hooks/useFilteredSchedule';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
 import { TransactionDetailModalData } from '@/types/schedule';
+import { ScheduleItem } from '@/types/database';
 
 export default function SchedulePage() {
   // Current month state
@@ -32,10 +32,103 @@ export default function SchedulePage() {
   // Database hooks
   const { banks, isLoading: banksLoading, error: banksError } = useBanks();
   const { 
-    scheduleData, 
+    schedule: scheduleData, 
     isLoading: scheduleLoading, 
     error: scheduleError 
-  } = useScheduleData(currentDate.year, currentDate.month);
+  } = useMonthlySchedule(currentDate.year, currentDate.month);
+
+  // Convert MonthlySchedule to PaymentScheduleView format
+  const convertedScheduleData = useMemo(() => {
+    if (!scheduleData) return null;
+    
+    // Group schedule items by date and bank
+    const paymentsByDate = new Map<string, Map<string, ScheduleItem[]>>();
+    
+    scheduleData.items.forEach(item => {
+      const dateKey = new Date(item.date).toISOString().split('T')[0];
+      
+      if (!dateKey) return; // Skip invalid dates
+      
+      if (!paymentsByDate.has(dateKey)) {
+        paymentsByDate.set(dateKey, new Map());
+      }
+      
+      const dateMap = paymentsByDate.get(dateKey)!;
+      const bankKey = item.bankName || 'unknown';
+      
+      if (!dateMap.has(bankKey)) {
+        dateMap.set(bankKey, []);
+      }
+      
+      dateMap.get(bankKey)!.push(item);
+    });
+    
+    // Create payments array
+    const payments = Array.from(paymentsByDate.entries()).map(([dateKey, bankMap]) => {
+      const allTransactions = Array.from(bankMap.values()).flat();
+      
+      // Create bank payments for each bank
+      const bankPayments = Array.from(bankMap.entries()).map(([bankName, items]) => {
+        const bankTotal = items.reduce((sum, item) => sum + item.amount, 0);
+        const bank = banks.find(b => b.name === bankName);
+        
+        return {
+          bankId: bank?.id || bankName,
+          bankName: bankName,
+          amount: bankTotal,
+          transactionCount: items.length
+        };
+      });
+      
+      // Convert schedule items to transaction format
+      const transactions = allTransactions.map(item => ({
+        id: item.transactionId,
+        date: typeof item.date === 'number' ? item.date : item.date.getTime(),
+        amount: item.amount,
+        paymentType: item.cardId ? 'card' as const : 'bank' as const,
+        scheduledPayDate: typeof item.date === 'number' ? item.date : item.date.getTime(),
+        createdAt: Date.now(),
+        storeName: item.storeName || '',
+        usage: item.usage || '',
+        ...(item.cardId && { cardId: item.cardId }),
+        ...(banks.find(b => b.name === item.bankName)?.id && { 
+          bankId: banks.find(b => b.name === item.bankName)!.id 
+        }),
+        isScheduleEditable: item.isScheduleEditable ?? false
+      }));
+      
+      const date = new Date(dateKey);
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()] || '';
+      const bankName = bankPayments.length > 0 ? bankPayments[0]?.bankName || 'その他' : 'その他';
+      
+      return {
+        date: dateKey,
+        dayOfWeek,
+        paymentName: bankName,
+        paymentDay: date.getDate().toString() + '日',
+        bankPayments,
+        totalAmount: bankPayments.reduce((sum, bp) => sum + bp.amount, 0),
+        transactions,
+        sortKey: date.getTime()
+      };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+    
+    return {
+      month: `${scheduleData.year}年${scheduleData.month}月`,
+      payments,
+      bankTotals: new Map(scheduleData.bankTotals.map(bt => [bt.bankId, bt.totalAmount])),
+      monthTotal: scheduleData.monthTotal,
+      uniqueBanks: scheduleData.bankTotals.map(bt => {
+        const bank = banks.find(b => b.id === bt.bankId);
+        return {
+          id: bt.bankId,
+          name: bt.bankName,
+          createdAt: bank?.createdAt || Date.now(),
+          ...(bank?.memo && { memo: bank.memo })
+        };
+      })
+    };
+  }, [scheduleData, banks]);
 
   // Filtering
   const {
@@ -44,7 +137,7 @@ export default function SchedulePage() {
     updateFilters,
     clearFilters,
     hasActiveFilters
-  } = useFilteredSchedule(scheduleData);
+  } = useFilteredSchedule(convertedScheduleData);
 
   // Navigation items
   const navigationItems = [
@@ -106,8 +199,8 @@ export default function SchedulePage() {
   // Error state
   const error = banksError || scheduleError;
 
-  // Use filtered data or original data
-  const displayData = filteredData || scheduleData;
+  // Use filtered data or converted data
+  const displayData = filteredData || convertedScheduleData;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

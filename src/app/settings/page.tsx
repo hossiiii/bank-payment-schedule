@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { BankMaster, CardMaster } from '@/components/settings';
+import { DataFixPanel } from '@/components/settings/DataFixPanel';
 import { TopNavigation, Navigation, NavigationIcons } from '@/components/ui';
-import { useBanks, useCards, useDatabaseStats } from '@/lib/hooks/useDatabase';
+import { useBanks, useCards, useTransactions, useDatabaseStats } from '@/lib/hooks/useDatabase';
+import { logDebug } from '@/lib/utils/logger';
 
 export default function SettingsPage() {
   // Database hooks
@@ -22,8 +24,16 @@ export default function SettingsPage() {
     error: cardsError,
     createCard,
     updateCard,
-    deleteCard
+    deleteCard,
+    bulkUpdateCards
   } = useCards();
+
+  const {
+    transactions,
+    isLoading: transactionsLoading,
+    error: transactionsError,
+    bulkUpdateTransactions
+  } = useTransactions();
 
   const {
     stats,
@@ -57,10 +67,10 @@ export default function SettingsPage() {
   };
 
   // Loading state
-  const isLoading = banksLoading || cardsLoading || statsLoading;
+  const isLoading = banksLoading || cardsLoading || transactionsLoading || statsLoading;
   
   // Error state
-  const error = banksError || cardsError || statsError;
+  const error = banksError || cardsError || transactionsError || statsError;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -155,6 +165,15 @@ export default function SettingsPage() {
           onDeleteCard={async (id) => { await deleteCard(id); }}
         />
 
+        {/* Data Fix Panel */}
+        <DataFixPanel
+          cards={cards}
+          transactions={transactions}
+          onUpdateCards={bulkUpdateCards}
+          onRecalculateTransactions={bulkUpdateTransactions}
+          isLoading={isLoading}
+        />
+
         {/* Data Management Section */}
         <div className="bg-white rounded-lg shadow-sm p-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -173,7 +192,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => {
                   // Implement export functionality
-                  console.log('Export data');
+                  logDebug('Export data requested', undefined, 'SettingsPage');
                 }}
                 className="flex items-center space-x-2 px-4 py-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
                 disabled={isLoading}
@@ -196,7 +215,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => {
                   // Implement import functionality
-                  console.log('Import data');
+                  logDebug('Import data requested', undefined, 'SettingsPage');
                 }}
                 className="flex items-center space-x-2 px-4 py-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
                 disabled={isLoading}

@@ -35,6 +35,41 @@ Object.defineProperty(globalThis, 'crypto', {
   value: webcrypto,
 });
 
+// Mock localStorage and sessionStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+  length: 0,
+  key: jest.fn(),
+};
+
+const sessionStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+  length: 0,
+  key: jest.fn(),
+};
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
+Object.defineProperty(window, 'sessionStorage', {
+  value: sessionStorageMock,
+});
+
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+});
+
+Object.defineProperty(global, 'sessionStorage', {
+  value: sessionStorageMock,
+});
+
 // Polyfill for structuredClone (needed for fake-indexeddb)
 if (!globalThis.structuredClone) {
   globalThis.structuredClone = (obj) => {
@@ -102,4 +137,34 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError;
   console.warn = originalWarn;
+});
+
+// Clean up between tests
+beforeEach(() => {
+  // Clear all mocks
+  jest.clearAllMocks();
+  
+  // Clear localStorage/sessionStorage
+  localStorageMock.getItem.mockClear();
+  localStorageMock.setItem.mockClear();
+  localStorageMock.removeItem.mockClear();
+  localStorageMock.clear.mockClear();
+  
+  sessionStorageMock.getItem.mockClear();
+  sessionStorageMock.setItem.mockClear();
+  sessionStorageMock.removeItem.mockClear();
+  sessionStorageMock.clear.mockClear();
+  
+  // Reset storage data
+  const storageData = {};
+  localStorageMock.getItem.mockImplementation(key => storageData[key] || null);
+  localStorageMock.setItem.mockImplementation((key, value) => {
+    storageData[key] = value.toString();
+  });
+  localStorageMock.removeItem.mockImplementation(key => {
+    delete storageData[key];
+  });
+  localStorageMock.clear.mockImplementation(() => {
+    Object.keys(storageData).forEach(key => delete storageData[key]);
+  });
 });

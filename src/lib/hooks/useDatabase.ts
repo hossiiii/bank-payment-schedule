@@ -423,8 +423,28 @@ export function useCards(bankId?: string) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [bankId]);
   
+  const bulkUpdateCards = useCallback(async (updates: Map<string, Partial<CardInput>>): Promise<void> => {
+    try {
+      setState(prev => ({ ...prev, error: null }));
+      
+      await cardOperations.bulkUpdate(updates);
+      
+      // Refresh the cards list after bulk update
+      await fetchCards();
+      
+      dbCache.invalidate('cards');
+      dbCache.invalidate('schedule');
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error : new Error('Failed to bulk update cards')
+      }));
+      throw error;
+    }
+  }, [bankId]);
+
   return {
     cards: state.data,
     isLoading: state.isLoading,
@@ -432,7 +452,8 @@ export function useCards(bankId?: string) {
     refetch: fetchCards,
     createCard,
     updateCard,
-    deleteCard
+    deleteCard,
+    bulkUpdateCards
   };
 }
 
@@ -482,7 +503,7 @@ export function useTransactions(filters?: TransactionFilters) {
       }
       throw error;
     }
-  }, [filters]);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
   
   const createTransaction = useCallback(async (transactionData: TransactionInput): Promise<Transaction> => {
     try {
@@ -612,8 +633,28 @@ export function useTransactions(filters?: TransactionFilters) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
   
+  const bulkUpdateTransactions = useCallback(async (updates: Map<string, { scheduledPayDate: number }>): Promise<void> => {
+    try {
+      setState(prev => ({ ...prev, error: null }));
+      
+      await transactionOperations.bulkUpdate(updates);
+      
+      // Refresh the transactions list after bulk update
+      await fetchTransactions();
+      
+      dbCache.invalidate('transactions');
+      dbCache.invalidate('schedule');
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error : new Error('Failed to bulk update transactions')
+      }));
+      throw error;
+    }
+  }, [filters?.dateRange?.start, filters?.dateRange?.end, filters?.cardId, filters?.bankId, filters?.paymentType]);
+
   return {
     transactions: state.data,
     isLoading: state.isLoading,
@@ -621,7 +662,8 @@ export function useTransactions(filters?: TransactionFilters) {
     refetch: fetchTransactions,
     createTransaction,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
+    bulkUpdateTransactions
   };
 }
 
@@ -663,7 +705,7 @@ export function useMonthlySchedule(year: number, month: number) {
   
   useEffect(() => {
     fetchSchedule();
-  }, [fetchSchedule]);
+  }, [year, month]);
   
   return {
     schedule: state.data,
@@ -722,7 +764,7 @@ export function useTransaction(transactionId?: string) {
     } else {
       setState({ data: null, isLoading: false, error: null });
     }
-  }, [transactionId, fetchTransaction]);
+  }, [transactionId]);
   
   return {
     transaction: state.data,

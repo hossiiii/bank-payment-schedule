@@ -8,6 +8,7 @@ import {
   type MigrationErrorRecoveryOptions 
 } from './errors';
 import { VersionManager } from './versionManager';
+import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 import { exportDatabase } from './operations';
 import type { PaymentDatabase } from './schema';
 
@@ -19,7 +20,7 @@ export async function handleMigrationError(
   db: PaymentDatabase,
   recoveryOptions?: MigrationErrorRecoveryOptions
 ): Promise<boolean> {
-  console.error('Migration error:', error.getDetailedInfo());
+  logError('Migration error', error.getDetailedInfo(), 'MigrationHandler');
   
   // Record the failed migration
   VersionManager.recordMigration(
@@ -94,7 +95,7 @@ async function backupAndRetry(
 ): Promise<boolean> {
   try {
     // Create backup
-    console.log('Creating backup before retry...');
+    logInfo('Creating backup before retry...', undefined, 'MigrationHandler');
     const backupData = await exportDatabase();
     
     // Store backup in localStorage
@@ -105,7 +106,7 @@ async function backupAndRetry(
     VersionManager.recordBackup();
     
     // Retry migration
-    console.log('Retrying migration...');
+    logInfo('Retrying migration...', undefined, 'MigrationHandler');
     
     // Close and reopen database to retry
     db.close();
@@ -123,7 +124,7 @@ async function backupAndRetry(
     
     return true;
   } catch (retryError) {
-    console.error('Retry failed:', retryError);
+    logError('Retry failed', retryError, 'MigrationHandler');
     
     // Record the retry failure
     VersionManager.recordMigration(
@@ -143,7 +144,7 @@ async function backupAndRetry(
  */
 async function resetDatabase(db: PaymentDatabase): Promise<boolean> {
   try {
-    console.log('Resetting database...');
+    logInfo('Resetting database...', undefined, 'MigrationHandler');
     
     // Close the database
     db.close();
@@ -174,7 +175,7 @@ async function resetDatabase(db: PaymentDatabase): Promise<boolean> {
     
     return true;
   } catch (resetError) {
-    console.error('Reset failed:', resetError);
+    logError('Reset failed', resetError, 'MigrationHandler');
     alert('データベースのリセットに失敗しました。ブラウザのデータをクリアしてください。');
     return false;
   }
@@ -198,7 +199,7 @@ async function exportUserData(): Promise<void> {
     
     alert('データがエクスポートされました。このファイルを安全な場所に保管してください。');
   } catch (exportError) {
-    console.error('Export failed:', exportError);
+    logError('Export failed', exportError, 'MigrationHandler');
     alert('データのエクスポートに失敗しました。');
   }
 }
@@ -210,7 +211,7 @@ export async function checkDatabaseHealth(dbName: string = 'PaymentScheduleDB'):
   const health = await VersionManager.getDatabaseHealth(dbName);
   
   if (health.status === 'error') {
-    console.error('Database health check failed:', health.issues);
+    logError('Database health check failed', health.issues, 'MigrationHandler');
     
     if (health.issues.length > 0) {
       const message = `
@@ -221,14 +222,14 @@ ${health.issues.join('\n')}
 ${health.recommendations.length > 0 ? '\n推奨事項:\n' + health.recommendations.join('\n') : ''}
       `.trim();
       
-      console.warn(message);
+      logWarn(message, undefined, 'MigrationHandler');
     }
   } else if (health.status === 'warning') {
-    console.warn('Database health warnings:', health.recommendations);
+    logWarn('Database health warnings', health.recommendations, 'MigrationHandler');
     
     // Show backup recommendation if needed
     if (VersionManager.isBackupRecommended()) {
-      console.info('データのバックアップを作成することをお勧めします（設定 > データ管理）');
+      logInfo('データのバックアップを作成することをお勧めします（設定 > データ管理）', undefined, 'MigrationHandler');
     }
   }
 }
@@ -248,12 +249,12 @@ export function initializeMigrationErrorHandling(db: PaymentDatabase): void {
   }
   
   // Check database health on startup
-  checkDatabaseHealth().catch(console.error);
+  checkDatabaseHealth().catch((error) => logError('Database health check failed', error, 'MigrationHandler'));
   
   // Set up periodic health checks
   if (typeof window !== 'undefined') {
     setInterval(() => {
-      checkDatabaseHealth().catch(console.error);
+      checkDatabaseHealth().catch((error) => logError('Database health check failed', error, 'MigrationHandler'));
     }, 60000); // Check every minute
   }
 }

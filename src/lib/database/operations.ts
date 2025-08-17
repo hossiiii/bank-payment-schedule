@@ -314,6 +314,36 @@ export class CardOperations {
       await this.db.cards.delete(id);
     });
   }
+
+  /**
+   * Bulk updates multiple cards
+   */
+  async bulkUpdate(updates: Map<string, Partial<CardInput>>): Promise<void> {
+    return withRetry(async () => {
+      const updatePromises = Array.from(updates.entries()).map(async ([cardId, updateData]) => {
+        // Get the existing card first
+        const existingCard = await this.db.cards.get(cardId);
+        if (!existingCard) {
+          throw new ValidationError(`Card with ID "${cardId}" not found`);
+        }
+
+        // Merge the updates with existing data
+        const updatedCard = { ...existingCard, ...updateData };
+        
+        // Validate the updated card
+        const validationResult = CardSchema.safeParse(updatedCard);
+        if (!validationResult.success) {
+          throw new ValidationError(
+            `Card validation failed: ${validationResult.error.errors.map(e => e.message).join(', ')}`
+          );
+        }
+
+        await this.db.cards.update(cardId, updateData);
+      });
+      
+      await Promise.all(updatePromises);
+    });
+  }
 }
 
 /**
@@ -637,6 +667,19 @@ export class TransactionOperations {
       });
       
       await Promise.all(updates);
+    });
+  }
+
+  /**
+   * Bulk updates multiple transactions
+   */
+  async bulkUpdate(updates: Map<string, { scheduledPayDate: number }>): Promise<void> {
+    return withRetry(async () => {
+      const updatePromises = Array.from(updates.entries()).map(async ([transactionId, updateData]) => {
+        await this.db.transactions.update(transactionId, updateData);
+      });
+      
+      await Promise.all(updatePromises);
     });
   }
 }

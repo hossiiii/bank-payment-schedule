@@ -428,23 +428,42 @@ export function TransactionModal({
           </div>
 
           {/* Payment preview */}
-          {selectedBank && formData.paymentType === 'card' && (
+          {selectedBank && formData.paymentType === 'card' && selectedCard && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
                 <strong>{selectedBank.name}</strong>
                 {selectedCard && ` - ${selectedCard.name}`}
               </p>
-              {selectedCard && (
-                <p className="text-xs text-blue-600 mt-1">
-                  締切日: {selectedCard.closingDay} / 支払日: {selectedCard.paymentDay}
-                  {selectedCard.paymentMonthShift > 0 && 
-                    ` (${selectedCard.paymentMonthShift}ヶ月後)`
-                  }
-                </p>
-              )}
+              <p className="text-xs text-blue-600 mt-1">
+                締切日: {selectedCard.closingDay} / 支払日: {selectedCard.paymentDay}
+                {selectedCard.paymentMonthShift > 0 && 
+                  ` (${selectedCard.paymentMonthShift}ヶ月後)`
+                }
+              </p>
               <p className="text-xs text-blue-600 mt-1">
                 支払い予定: {formatJapaneseDate(new Date(formData.scheduledPayDate))}
               </p>
+              {(() => {
+                const result = calculateCardPaymentDate(selectedDate, selectedCard);
+                const isAdjusted = result.paymentCycle.isAdjusted;
+                const originalDate = result.paymentCycle.originalPaymentDate;
+                const adjustedDate = result.paymentCycle.adjustedPaymentDate;
+                
+                if (isAdjusted) {
+                  return (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠ 週末調整: {formatJapaneseDate(originalDate)} → {formatJapaneseDate(adjustedDate)}
+                    </p>
+                  );
+                } else if (selectedCard.adjustWeekend && selectedCard.paymentDay === '月末') {
+                  return (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ 月末支払い（週末調整を無効にすることを推奨）
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
 

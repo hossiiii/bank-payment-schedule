@@ -8,6 +8,7 @@ import {
   decryptData,
   type EncryptedData 
 } from '@/lib/database/encryption';
+import { logDebug, logError } from '@/lib/utils/logger';
 import { DatabaseOperationError } from '@/types/database';
 
 /**
@@ -47,6 +48,37 @@ export function useEncryption() {
   
   const sessionManagerRef = useRef<SessionKeyManager | null>(null);
   const expirationTimerRef = useRef<NodeJS.Timeout>();
+  
+  // Handle session expiration
+  const handleSessionExpiration = useCallback(() => {
+    if (sessionManagerRef.current) {
+      sessionManagerRef.current.clearSession();
+    }
+    
+    setState(prev => ({
+      ...prev,
+      isUnlocked: false,
+      sessionExpiresAt: null
+    }));
+    
+    if (expirationTimerRef.current) {
+      clearTimeout(expirationTimerRef.current);
+    }
+  }, []);
+  
+  // Setup automatic session expiration
+  const setupExpirationTimer = useCallback((expiresAt: number) => {
+    if (expirationTimerRef.current) {
+      clearTimeout(expirationTimerRef.current);
+    }
+    
+    const timeUntilExpiration = expiresAt - Date.now();
+    if (timeUntilExpiration > 0) {
+      expirationTimerRef.current = setTimeout(() => {
+        handleSessionExpiration();
+      }, timeUntilExpiration);
+    }
+  }, [handleSessionExpiration]);
   
   // Initialize session manager and check for existing keys
   useEffect(() => {
@@ -92,38 +124,7 @@ export function useEncryption() {
         clearTimeout(expirationTimerRef.current);
       }
     };
-  }, []);
-  
-  // Setup automatic session expiration
-  const setupExpirationTimer = useCallback((expiresAt: number) => {
-    if (expirationTimerRef.current) {
-      clearTimeout(expirationTimerRef.current);
-    }
-    
-    const timeUntilExpiration = expiresAt - Date.now();
-    if (timeUntilExpiration > 0) {
-      expirationTimerRef.current = setTimeout(() => {
-        handleSessionExpiration();
-      }, timeUntilExpiration);
-    }
-  }, []);
-  
-  // Handle session expiration
-  const handleSessionExpiration = useCallback(() => {
-    if (sessionManagerRef.current) {
-      sessionManagerRef.current.clearSession();
-    }
-    
-    setState(prev => ({
-      ...prev,
-      isUnlocked: false,
-      sessionExpiresAt: null
-    }));
-    
-    if (expirationTimerRef.current) {
-      clearTimeout(expirationTimerRef.current);
-    }
-  }, []);
+  }, [setupExpirationTimer]);
   
   // Setup initial password and key
   const setupEncryption = useCallback(async (password: string): Promise<void> => {
@@ -149,13 +150,13 @@ export function useEncryption() {
       try {
         const { closeDatabase, initializeDatabase } = await import('@/lib/database/schema');
         await closeDatabase();
-        console.log('Closed existing database instance during setup');
+        logDebug('Closed existing database instance during setup', undefined, 'useEncryption');
         
         // Initialize encrypted database with password
         await initializeDatabase(password);
-        console.log('Database encryption setup and initialized successfully during setup');
+        logDebug('Database encryption setup and initialized successfully during setup', undefined, 'useEncryption');
       } catch (dbError) {
-        console.error('Failed to setup database encryption during initial setup:', dbError);
+        logError('Failed to setup database encryption during initial setup', dbError, 'useEncryption');
         // Continue anyway - the session is valid
       }
       
@@ -201,17 +202,17 @@ export function useEncryption() {
       try {
         const { closeDatabase, initializeDatabaseWithEncryption } = await import('@/lib/database/schema');
         await closeDatabase();
-        console.log('Closed existing database instance');
+        logDebug('Closed existing database instance', undefined, 'useEncryption');
         
         // Initialize encrypted database using existing session
         await initializeDatabaseWithEncryption(sessionManagerRef.current);
-        console.log('Database encryption setup and initialized successfully');
+        logDebug('Database encryption setup and initialized successfully', undefined, 'useEncryption');
       } catch (dbError) {
-        console.error('Failed to setup database encryption:', dbError);
+        logError('Failed to setup database encryption', dbError, 'useEncryption');
         // Continue anyway - the session is valid
       }
       
-      console.log('Unlock successful, setting state to unlocked with expires at:', expiresAt);
+      logDebug('Unlock successful, setting state to unlocked', { expiresAt }, 'useEncryption');
       setState({
         isUnlocked: true,
         hasStoredKey: true,
@@ -220,7 +221,7 @@ export function useEncryption() {
         error: null
       });
       
-      console.log('State updated, setting up expiration timer');
+      logDebug('State updated, setting up expiration timer', undefined, 'useEncryption');
       setupExpirationTimer(expiresAt);
     } catch (error) {
       setState(prev => ({

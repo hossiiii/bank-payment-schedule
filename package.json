@@ -12,10 +12,20 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "test:unit": "jest __tests__/lib __tests__/components/ui",
+    "test:store": "jest __tests__/store",
+    "test:hooks": "jest __tests__/hooks",
+    "test:components": "jest __tests__/components",
+    "test:integration": "jest __tests__/integration",
+    "test:performance": "jest __tests__/performance",
     "test:database": "jest __tests__/lib/database",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:chrome": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:safari": "playwright test --project=webkit",
+    "test:e2e:mobile": "playwright test --project='Mobile Chrome'",
+    "test:e2e:pwa": "playwright test --project='PWA Chrome'"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.8",
@@ -28,7 +38,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

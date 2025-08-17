@@ -1,6 +1,7 @@
 import { getDatabase } from './schema';
 import { SessionKeyManager, deriveKeyFromPassword } from './encryption';
 import { Bank, Card, Transaction } from '@/types/database';
+import { logError, logInfo } from '@/lib/utils/logger';
 
 /**
  * Data migration utilities for transitioning from unencrypted to encrypted database
@@ -23,35 +24,35 @@ export async function migrateToEncrypted(password: string): Promise<void> {
   
   try {
     // Step 1: Export all current data
-    console.log('Step 1: Exporting current data...');
+    logInfo('Step 1: Exporting current data...', undefined, 'MigrationUtils');
     const exportedData = await db.exportAllData();
     const { banks, cards, transactions } = exportedData;
     
     // Step 2: Close current database
-    console.log('Step 2: Closing current database...');
+    logInfo('Step 2: Closing current database...', undefined, 'MigrationUtils');
     await db.close();
     
     // Step 3: Delete the existing database to start fresh
-    console.log('Step 3: Preparing for encrypted database...');
+    logInfo('Step 3: Preparing for encrypted database...', undefined, 'MigrationUtils');
     await deleteDatabase('PaymentScheduleDB');
     
     // Step 4: Setup encryption and reinitialize database
-    console.log('Step 4: Setting up encryption...');
+    logInfo('Step 4: Setting up encryption...', undefined, 'MigrationUtils');
     const derivedKey = await deriveKeyFromPassword(password);
     await sessionManager.createSession(derivedKey);
     await sessionManager.storeKeyHash(derivedKey);
     
     // Step 5: Initialize encrypted database
-    console.log('Step 5: Initializing encrypted database...');
+    logInfo('Step 5: Initializing encrypted database...', undefined, 'MigrationUtils');
     await db.initializeWithPassword(password);
     
     // Step 6: Import data into encrypted database
-    console.log('Step 6: Importing data into encrypted database...');
+    logInfo('Step 6: Importing data into encrypted database...', undefined, 'MigrationUtils');
     await db.importAllData({ banks, cards, transactions });
     
-    console.log('Migration completed successfully!');
+    logInfo('Migration completed successfully!', undefined, 'MigrationUtils');
   } catch (error) {
-    console.error('Migration failed:', error);
+    logError('Migration failed', error, 'MigrationUtils');
     throw new Error(`Failed to migrate to encrypted database: ${error}`);
   }
 }
@@ -77,7 +78,7 @@ export async function needsMigration(): Promise<boolean> {
     // For now, we'll assume if there's no stored key and there's data, migration is needed
     return !hasStoredKey;
   } catch (error) {
-    console.error('Failed to check migration status:', error);
+    logError('Failed to check migration status', error, 'MigrationUtils');
     return false;
   }
 }
@@ -90,7 +91,7 @@ async function deleteDatabase(name: string): Promise<void> {
     const deleteReq = indexedDB.deleteDatabase(name);
     
     deleteReq.onsuccess = () => {
-      console.log(`Database ${name} deleted successfully`);
+      logInfo(`Database ${name} deleted successfully`, undefined, 'MigrationUtils');
       resolve();
     };
     
@@ -99,7 +100,7 @@ async function deleteDatabase(name: string): Promise<void> {
     };
     
     deleteReq.onblocked = () => {
-      console.warn(`Delete blocked for database ${name}`);
+      logError(`Delete blocked for database ${name}`, undefined, 'MigrationUtils');
       // Still resolve as the database will be deleted when connections close
       resolve();
     };

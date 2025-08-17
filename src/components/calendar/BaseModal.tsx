@@ -137,7 +137,7 @@ export interface BaseModalFooterProps {
   primaryAction?: {
     label: string;
     onClick: () => void;
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'destructive' | 'danger';
     disabled?: boolean;
   };
   secondaryAction?: {
@@ -163,6 +163,8 @@ export function BaseModalFooter({
     switch (variant) {
       case 'primary':
         return cn(baseClasses, 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500');
+      case 'destructive':
+        return cn(baseClasses, 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500');
       case 'danger':
         return cn(baseClasses, 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500');
       case 'ghost':

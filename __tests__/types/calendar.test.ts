@@ -230,6 +230,8 @@ describe('Calendar Types', () => {
         date: '2024-02-15',
         totalAmount: 20000, // 総合計
         transactionTotal: 15000, // 取引合計
+        cardTransactionTotal: 15000, // カード払い合計
+        bankTransactionTotal: 0, // 銀行引落合計
         scheduleTotal: 5000, // 引落予定合計
         transactionCount: 1,
         scheduleCount: 1,
@@ -238,6 +240,8 @@ describe('Calendar Types', () => {
         scheduleItems,
         hasData: true,
         hasTransactions: true, // 取引データあり
+        hasCardTransactions: true, // カード払いデータあり
+        hasBankTransactions: false, // 銀行引落データなし
         hasSchedule: true // 引落予定データあり
       };
 
@@ -260,6 +264,8 @@ describe('Calendar Types', () => {
         date: '2024-02-20',
         totalAmount: 0,
         transactionTotal: 0,
+        cardTransactionTotal: 0,
+        bankTransactionTotal: 0,
         scheduleTotal: 0,
         transactionCount: 0,
         scheduleCount: 0,
@@ -268,6 +274,8 @@ describe('Calendar Types', () => {
         scheduleItems: [],
         hasData: false,
         hasTransactions: false,
+        hasCardTransactions: false,
+        hasBankTransactions: false,
         hasSchedule: false
       };
 

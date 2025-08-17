@@ -6,6 +6,8 @@ import { Navigation, NavigationIcons } from '@/components/ui';
 import { useBanks, useCards, useTransactions, useMonthlySchedule } from '@/lib/hooks/useDatabase';
 import { Transaction, TransactionInput, ScheduleItem } from '@/types/database';
 import { getCurrentJapanDate } from '@/lib/utils/dateUtils';
+import { useModalManager } from '../hooks/modal/useModalManager';
+import { logError, logDebug } from '@/lib/utils/logger';
 
 export default function CalendarPage() {
   // Current month state
@@ -16,27 +18,6 @@ export default function CalendarPage() {
       month: today.getMonth() + 1
     };
   });
-
-  // Modal state
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Transaction view modal state
-  const [isTransactionViewModalOpen, setIsTransactionViewModalOpen] = useState(false);
-  const [selectedTransactions, setSelectedTransactions] = useState<Transaction[]>([]);
-  
-  // Schedule modal state
-  const [isScheduleViewModalOpen, setIsScheduleViewModalOpen] = useState(false);
-  const [selectedScheduleItems, setSelectedScheduleItems] = useState<ScheduleItem[]>([]);
-  
-  // Schedule edit modal state
-  const [isScheduleEditModalOpen, setIsScheduleEditModalOpen] = useState(false);
-  const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduleItem | null>(null);
-  
-  // Day total modal state
-  const [isDayTotalModalOpen, setIsDayTotalModalOpen] = useState(false);
-  const [selectedDayTotalData, setSelectedDayTotalData] = useState<any>(null);
 
   // Database hooks
   const { banks, isLoading: banksLoading, error: banksError } = useBanks();
@@ -62,6 +43,92 @@ export default function CalendarPage() {
     refetch: refetchSchedule
   } = useMonthlySchedule(currentDate.year, currentDate.month);
 
+  // Modal manager for unified modal state management
+  const modalManager = useModalManager({
+    // Data operation handlers
+    onTransactionSave: async (transactionInput: TransactionInput) => {
+      try {
+        if (modalManager.selectedData.transaction) {
+          // Update existing transaction
+          await updateTransaction(modalManager.selectedData.transaction.id, transactionInput);
+        } else {
+          // Create new transaction
+          await createTransaction(transactionInput);
+        }
+        
+        // Refetch both transaction and schedule data to reflect changes immediately
+        await Promise.all([
+          refetchTransactions(),
+          refetchSchedule()
+        ]);
+      } catch (error) {
+        logError('Failed to save transaction', error, 'CalendarPage');
+        throw error;
+      }
+    },
+    onTransactionDelete: async (transactionId: string) => {
+      try {
+        await deleteTransaction(transactionId);
+        
+        // Refetch both transaction and schedule data to reflect changes immediately
+        await Promise.all([
+          refetchTransactions(),
+          refetchSchedule()
+        ]);
+      } catch (error) {
+        logError('Failed to delete transaction', error, 'CalendarPage');
+        throw error;
+      }
+    },
+    onScheduleSave: async (scheduleId: string, updates: Partial<ScheduleItem>) => {
+      try {
+        // TODO: Implement schedule update functionality
+        logDebug('Schedule update', { scheduleId, updates }, 'CalendarPage');
+        // await updateScheduleItem(scheduleId, updates);
+      } catch (error) {
+        logError('Failed to save schedule', error, 'CalendarPage');
+        throw error;
+      }
+    },
+    onScheduleDelete: async (scheduleId: string) => {
+      try {
+        // TODO: Implement schedule delete functionality
+        logDebug('Schedule delete', scheduleId, 'CalendarPage');
+        // await deleteScheduleItem(scheduleId);
+      } catch (error) {
+        logError('Failed to delete schedule', error, 'CalendarPage');
+        throw error;
+      }
+    },
+    onScheduleTransactionClick: async (transactionId: string) => {
+      try {
+        // まず現在のtransactionsから検索
+        let transaction = transactions.find(t => t.id === transactionId);
+        
+        if (!transaction) {
+          // 現在の月のtransactionsにない場合、データベースから直接取得
+          const { transactionOperations } = await import('@/lib/database');
+          transaction = await transactionOperations.getById(transactionId);
+        }
+        
+        if (transaction) {
+          // ScheduleViewModalを一時的に閉じて空のダイアログ表示を防ぐ
+          modalManager.closeScheduleViewModal();
+          
+          // TransactionModalを開く
+          modalManager.openTransactionModal(new Date(transaction.date), transaction);
+        } else {
+          logError('Transaction not found', { transactionId }, 'CalendarPage');
+        }
+      } catch (error) {
+        logError('Failed to get transaction', error, 'CalendarPage');
+      }
+    },
+    banks,
+    cards,
+    isLoading: banksLoading || cardsLoading || transactionsLoading || scheduleLoading
+  });
+
   // Navigation items
   const navigationItems = [
     {
@@ -86,201 +153,64 @@ export default function CalendarPage() {
     setCurrentDate({ year, month });
   };
 
-  // Handle date selection
+  // Simplified event handlers using modalManager
   const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedTransaction(null);
-    setIsModalOpen(true);
+    modalManager.openTransactionModal(date);
   };
 
-  // Handle transaction click
   const handleTransactionClick = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
-    setSelectedDate(new Date(transaction.date));
-    setIsModalOpen(true);
+    modalManager.openTransactionModal(new Date(transaction.date), transaction);
   };
 
   // Handle transaction view click (for DayTotalModal)
   const handleTransactionViewClick = (transactions: Transaction[]) => {
-    setSelectedTransactions(transactions);
-    setIsTransactionViewModalOpen(true);
+    if (modalManager.selectedData.date) {
+      modalManager.openTransactionViewModal(modalManager.selectedData.date, transactions);
+    }
   };
 
   // Handle schedule view click (for DayTotalModal)
   const handleScheduleViewClick = (scheduleItems: ScheduleItem[]) => {
-    setSelectedScheduleItems(scheduleItems);
-    setIsScheduleViewModalOpen(true);
+    if (modalManager.selectedData.date) {
+      modalManager.openScheduleViewModal(modalManager.selectedData.date, scheduleItems);
+    }
   };
   
   // Handle transaction view click with date (for CalendarView)
   const handleTransactionViewClickWithDate = (date: Date, transactions: Transaction[]) => {
-    setSelectedDate(date);
-    setSelectedTransactions(transactions);
-    setIsTransactionViewModalOpen(true);
+    modalManager.openTransactionViewModal(date, transactions);
   };
 
   // Handle schedule view click with date (for CalendarView)
   const handleScheduleViewClickWithDate = (date: Date, scheduleItems: ScheduleItem[]) => {
-    setSelectedDate(date);
-    setSelectedScheduleItems(scheduleItems);
-    setIsScheduleViewModalOpen(true);
+    modalManager.openScheduleViewModal(date, scheduleItems);
   };
   
   // Handle schedule click from modals (legacy - for ScheduleEditModal)
   const handleScheduleClick = (scheduleItem: ScheduleItem) => {
-    setSelectedScheduleItem(scheduleItem);
-    setIsScheduleEditModalOpen(true);
+    modalManager.openScheduleEditModal(scheduleItem);
   };
   
-  // Handle transaction click from schedule modals
-  const handleScheduleTransactionClick = async (transactionId: string) => {
-    try {
-      // まず現在のtransactionsから検索
-      let transaction = transactions.find(t => t.id === transactionId);
-      
-      if (!transaction) {
-        // 現在の月のtransactionsにない場合、データベースから直接取得
-        const { transactionOperations } = await import('@/lib/database');
-        transaction = await transactionOperations.getById(transactionId);
-      }
-      
-      if (transaction) {
-        // ScheduleViewModalを一時的に閉じて空のダイアログ表示を防ぐ
-        setIsScheduleViewModalOpen(false);
-        
-        // TransactionModalを開く
-        setSelectedTransaction(transaction);
-        setSelectedDate(new Date(transaction.date));
-        setIsModalOpen(true);
-      } else {
-        console.error('Transaction not found:', transactionId);
-      }
-    } catch (error) {
-      console.error('Failed to get transaction:', error);
-    }
-  };
+  // Handle transaction click from schedule modals - now handled by modalManager
+  const handleScheduleTransactionClick = modalManager.handleScheduleTransactionClick;
   
-  // Handle schedule save
-  const handleScheduleSave = async (scheduleId: string, updates: Partial<ScheduleItem>) => {
-    try {
-      // TODO: Implement schedule update functionality
-      console.log('Schedule update:', { scheduleId, updates });
-      // await updateScheduleItem(scheduleId, updates);
-    } catch (error) {
-      console.error('Failed to save schedule:', error);
-      throw error;
-    }
-  };
+  // Handle schedule save and delete - now handled by modalManager
+  const handleScheduleSave = modalManager.handleScheduleSave;
+  const handleScheduleDelete = modalManager.handleScheduleDelete;
   
-  // Handle schedule delete
-  const handleScheduleDelete = async (scheduleId: string) => {
-    try {
-      // TODO: Implement schedule delete functionality
-      console.log('Schedule delete:', scheduleId);
-      // await deleteScheduleItem(scheduleId);
-    } catch (error) {
-      console.error('Failed to delete schedule:', error);
-      throw error;
-    }
-  };
-  
-  // Handle day total click
+  // Handle transaction view modal transaction click - now handled by modalManager
+  const handleTransactionViewTransactionClick = modalManager.handleTransactionViewTransactionClick;
 
-  // Handle transaction view modal transaction click
-  const handleTransactionViewTransactionClick = (transaction: Transaction) => {
-    // TransactionViewModalを閉じてTransactionModalを開く
-    setIsTransactionViewModalOpen(false);
-    setSelectedTransaction(transaction);
-    setSelectedDate(new Date(transaction.date));
-    setIsModalOpen(true);
-  };
+  // Handle transaction save and delete - now handled by modalManager
+  const handleTransactionSave = modalManager.handleTransactionSave;
+  const handleTransactionDelete = modalManager.handleTransactionDelete;
 
-  // Handle transaction save
-  const handleTransactionSave = async (transactionInput: TransactionInput) => {
-    try {
-      if (selectedTransaction) {
-        // Update existing transaction
-        await updateTransaction(selectedTransaction.id, transactionInput);
-      } else {
-        // Create new transaction
-        await createTransaction(transactionInput);
-      }
-      
-      // Refetch both transaction and schedule data to reflect changes immediately
-      await Promise.all([
-        refetchTransactions(),
-        refetchSchedule()
-      ]);
-      
-      // 保存後に全てのダイアログを閉じる
-      setIsModalOpen(false);
-      setSelectedTransaction(null);
-      setSelectedDate(null);
-      setIsScheduleViewModalOpen(false);
-      setSelectedScheduleItems([]);
-    } catch (error) {
-      console.error('Failed to save transaction:', error);
-      throw error;
-    }
-  };
-
-  // Handle transaction delete
-  const handleTransactionDelete = async (transactionId: string) => {
-    try {
-      await deleteTransaction(transactionId);
-      
-      // Refetch both transaction and schedule data to reflect changes immediately
-      await Promise.all([
-        refetchTransactions(),
-        refetchSchedule()
-      ]);
-      
-      // 削除後に全てのダイアログを閉じる
-      setIsModalOpen(false);
-      setSelectedTransaction(null);
-      setSelectedDate(null);
-      setIsScheduleViewModalOpen(false);
-      setSelectedScheduleItems([]);
-    } catch (error) {
-      console.error('Failed to delete transaction:', error);
-      throw error;
-    }
-  };
-
-  // Handle modal close
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedTransaction(null);
-    setSelectedDate(null);
-    
-    // 全てのダイアログを閉じる - 引落予定ダイアログにも戻らない
-    setIsScheduleViewModalOpen(false);
-    setSelectedScheduleItems([]);
-  };
-
-  // Handle transaction view modal close
-  const handleTransactionViewModalClose = () => {
-    setIsTransactionViewModalOpen(false);
-    setSelectedTransactions([]);
-  };
-
-  // Handle schedule view modal close
-  const handleScheduleViewModalClose = () => {
-    setIsScheduleViewModalOpen(false);
-    setSelectedScheduleItems([]);
-  };
-  
-  // Handle schedule edit modal close
-  const handleScheduleEditModalClose = () => {
-    setIsScheduleEditModalOpen(false);
-    setSelectedScheduleItem(null);
-  };
-  
-  // Handle day total modal close
-  const handleDayTotalModalClose = () => {
-    setIsDayTotalModalOpen(false);
-    setSelectedDayTotalData(null);
-  };
+  // Simplified modal close handlers using modalManager
+  const handleModalClose = modalManager.closeTransactionModal;
+  const handleTransactionViewModalClose = modalManager.closeTransactionViewModal;
+  const handleScheduleViewModalClose = modalManager.closeScheduleViewModal;
+  const handleScheduleEditModalClose = modalManager.closeScheduleEditModal;
+  const handleDayTotalModalClose = modalManager.closeDayTotalModal;
 
   // Loading state
   const isLoading = banksLoading || cardsLoading || transactionsLoading || scheduleLoading;
@@ -387,13 +317,13 @@ export default function CalendarPage() {
       </div>
 
       {/* Transaction modal */}
-      {isModalOpen && selectedDate && (
+      {modalManager.modalStates.transaction && modalManager.selectedData.date && (
         <TransactionModal
-          isOpen={isModalOpen}
+          isOpen={modalManager.modalStates.transaction}
           onClose={handleModalClose}
           onSave={handleTransactionSave}
-          {...(selectedTransaction && { onDelete: handleTransactionDelete, transaction: selectedTransaction })}
-          selectedDate={selectedDate}
+          {...(modalManager.selectedData.transaction && { onDelete: handleTransactionDelete, transaction: modalManager.selectedData.transaction })}
+          selectedDate={modalManager.selectedData.date}
           banks={banks}
           cards={cards}
           isLoading={isLoading}
@@ -401,39 +331,39 @@ export default function CalendarPage() {
       )}
 
       {/* Transaction view modal */}
-      {isTransactionViewModalOpen && selectedDate && selectedTransactions.length > 0 && (
+      {modalManager.modalStates.transactionView && modalManager.selectedData.date && modalManager.selectedData.transactions.length > 0 && (
         <TransactionViewModal
-          isOpen={isTransactionViewModalOpen}
+          isOpen={modalManager.modalStates.transactionView}
           onClose={handleTransactionViewModalClose}
           onTransactionClick={handleTransactionViewTransactionClick}
-          selectedDate={selectedDate}
-          transactions={selectedTransactions}
+          selectedDate={modalManager.selectedData.date}
+          transactions={modalManager.selectedData.transactions}
           banks={banks}
           cards={cards}
         />
       )}
 
       {/* Schedule view modal */}
-      {isScheduleViewModalOpen && selectedDate && selectedScheduleItems.length > 0 && (
+      {modalManager.modalStates.scheduleView && modalManager.selectedData.date && modalManager.selectedData.scheduleItems.length > 0 && (
         <ScheduleViewModal
-          isOpen={isScheduleViewModalOpen}
+          isOpen={modalManager.modalStates.scheduleView}
           onClose={handleScheduleViewModalClose}
           onTransactionClick={handleScheduleTransactionClick}
-          selectedDate={selectedDate}
-          scheduleItems={selectedScheduleItems}
+          selectedDate={modalManager.selectedData.date}
+          scheduleItems={modalManager.selectedData.scheduleItems}
           banks={banks}
           cards={cards}
         />
       )}
 
       {/* Schedule edit modal */}
-      {isScheduleEditModalOpen && selectedScheduleItem && (
+      {modalManager.modalStates.scheduleEdit && modalManager.selectedData.scheduleItem && (
         <ScheduleEditModal
-          isOpen={isScheduleEditModalOpen}
+          isOpen={modalManager.modalStates.scheduleEdit}
           onClose={handleScheduleEditModalClose}
           onSave={handleScheduleSave}
           onDelete={handleScheduleDelete}
-          scheduleItem={selectedScheduleItem}
+          scheduleItem={modalManager.selectedData.scheduleItem}
           banks={banks}
           cards={cards}
           isLoading={isLoading}
@@ -441,17 +371,17 @@ export default function CalendarPage() {
       )}
 
       {/* Day total modal */}
-      {isDayTotalModalOpen && selectedDate && selectedDayTotalData && (
+      {modalManager.modalStates.dayTotal && modalManager.selectedData.date && modalManager.selectedData.dayTotalData && (
         <DayTotalModal
-          isOpen={isDayTotalModalOpen}
+          isOpen={modalManager.modalStates.dayTotal}
           onClose={handleDayTotalModalClose}
           onTransactionClick={handleTransactionClick}
           onScheduleClick={handleScheduleClick}
           onScheduleTransactionClick={handleScheduleTransactionClick}
           onViewTransactions={handleTransactionViewClick}
           onViewSchedules={handleScheduleViewClick}
-          selectedDate={selectedDate}
-          dayTotalData={selectedDayTotalData}
+          selectedDate={modalManager.selectedData.date}
+          dayTotalData={modalManager.selectedData.dayTotalData}
           banks={banks}
           cards={cards}
         />

@@ -7,6 +7,7 @@ import {
   TransactionDetailModalData, 
   MobileScheduleCardProps 
 } from '@/types/schedule';
+import { Bank } from '@/types/database';
 import { formatAmount, getAmountForBank } from '@/lib/utils/scheduleUtils';
 
 export function MobileScheduleCard({
@@ -160,7 +161,7 @@ export function MobileScheduleCard({
 
 interface PaymentCardProps {
   payment: PaymentSummary;
-  banks: any[];
+  banks: Bank[];
   onBankPaymentClick: (payment: PaymentSummary, bankId: string, bankName: string) => void;
   onTotalClick: (payment: PaymentSummary) => void;
 }
